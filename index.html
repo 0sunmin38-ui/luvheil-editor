@@ -3932,7 +3932,18 @@ async function renderExact(hti, node, w, h, scale, fontCss, bg) {
   throw last || new Error('저장 실패');
 }
 
-const exportRatio = w => clamp(1440 / Math.max(1, w), 2, 4);
+/* 브라우저 캔버스는 한 변과 전체 픽셀 수에 상한이 있다. 내용 맞춤이 아주 길어도
+   고정 2~4배로 그리면 상한을 넘어 아래쪽이 조용히 잘릴 수 있으므로, 실제 캡처 높이를
+   함께 보고 배율을 낮춘다. 보통 크기에서는 기존 1440px 목표 화질을 그대로 쓴다. */
+const EXPORT_MAX_SIDE = 16000;
+const EXPORT_MAX_PIXELS = 48 * 1024 * 1024;
+function exportRatio(w, h) {
+  w = Math.max(1, w); h = Math.max(1, h || 1);
+  const wanted = clamp(1440 / w, 2, 4);
+  const bySide = Math.min(EXPORT_MAX_SIDE / w, EXPORT_MAX_SIDE / h);
+  const byArea = Math.sqrt(EXPORT_MAX_PIXELS / (w * h));
+  return Math.max(1 / Math.max(w, h), Math.min(wanted, bySide, byArea));
+}
 const raf2 = () => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 function download(url, name) {
   const a = document.createElement('a');
@@ -4053,7 +4064,6 @@ async function exportPNG() {
     /* 글꼴 인라인이 늦어도 저장 자체가 멈추면 안 된다 — 넘기면 skipFonts 로 간다 */
     /* 화면에 실제로 쓰인 굵기만 심는다 — 안 쓰는 굵기를 같이 심으면 용량만 몇 배가 된다 */
     const css = await withTimeout(fontEmbedCSS(cv.innerText || '', usedWeights(cv)), 20000, '');
-    const scale = exportRatio(cv.clientWidth);
     const bg = theme().bg;
     /* 화면이 아니라 줄바꿈·상자 크기를 못 박은 클론을 SVG 로 뽑아 정확한 크기로 그린다 */
     const shoot = async () => {
@@ -4062,6 +4072,7 @@ async function exportPNG() {
         await waitForImages(snap.clone);
         await bakeImagesForExport(snap.clone);
         await raf2();
+        const scale = exportRatio(snap.w, snap.h);
         return await renderExact(hti, snap.clone, snap.w, snap.h, scale, css, bg);
       } finally { snap.host.remove(); }
     };

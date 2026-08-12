@@ -3820,7 +3820,12 @@ function captureCloneAt(cv) {
     if (r.width && r.height) {
       c.style.setProperty('box-sizing', 'border-box', 'important');
       ['width', 'min-width', 'max-width'].forEach(k => c.style.setProperty(k, r.width.toFixed(2) + 'px', 'important'));
-      ['height', 'min-height', 'max-height'].forEach(k => c.style.setProperty(k, r.height.toFixed(2) + 'px', 'important'));
+      /* HTML 블록은 내부 카드 전체가 자연 높이로 늘어나야 한다. 미리보기 축소가 남은
+         getBoundingClientRect 높이를 강제로 박으면 그 아래 내용이 overflow 에 잘린다.
+         빈 줄 높이 보정이 필요한 일반 텍스트·말풍선·서명만 높이를 고정한다. */
+      if (!f.classList.contains('blk-html')) {
+        ['height', 'min-height', 'max-height'].forEach(k => c.style.setProperty(k, r.height.toFixed(2) + 'px', 'important'));
+      }
     }
     if (getComputedStyle(f).textAlign === 'justify') continue;
     const pts = softBreaks(f);

@@ -29,6 +29,9 @@
   --lh-body:1.6;
 
   --ctl:40px; --ctl-sm:32px; --pad:16px;
+  /* 미리보기(캔버스)의 논리 폭. 화면 폭과 상관없이 늘 이 폭으로 짜고, 화면이 좁으면
+     짜 놓은 것을 통째로 줄여서 보여 준다 [.canvas-fit / fitCanvas]. */
+  --canvas-w:560px;
   --sheet-format-h:40dvh;          /* 블록을 열었을 때 시트가 차지할 높이 */
   --sheet-tools-h:62dvh;           /* 도구를 열었을 때 (테마 상세가 길어 92% 까지 차올랐다) */
   --shadow-sheet:0 -2px 24px rgba(0,0,0,.07);
@@ -87,14 +90,22 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,
    아래쪽도 못 본다). 자동 마진은 남는 자리가 없으면 스스로 0 으로 접혀 그런 일이 없다. */
 /* flex 자식은 기본이 '자리가 모자라면 줄어듦' 이다. 그대로 두면 캔버스가 화면 높이에
    맞춰 눌리고 넘친 블록은 캔버스 안에서 잘려(overflow:hidden) 스크롤조차 생기지 않는다. */
-.stage > .canvas{flex:0 0 auto;margin-block:auto}
+.stage > .canvas-fit{flex:0 0 auto;margin-block:auto}
+/* 줄여서 보여 주는 감싸개.
+   캔버스는 transform 으로 줄어드는데 transform 은 자리를 안 줄여 준다 — 줄어든 만큼의
+   자리는 이 상자가 대신 잡는다(크기는 fitCanvas 가 넣어 준다). */
+.canvas-fit{position:relative;overflow:visible}
 /* 배경을 끌어서도 옮길 수 있다 — 손가락은 그냥 쓸어도 스크롤되지만
    마우스에는 스크롤바 말고 잡을 것이 필요하다. */
 .stage.is-pan{cursor:grabbing}
 .stage.is-pan *{pointer-events:none}
 
+/* 폭은 화면이 아니라 설정이 정한다. 화면에 맞춰 좁아지게 두면 좁은 기기에서 줄바꿈과
+   말풍선 폭이 통째로 달라져, 같은 글이 아이폰에서 저장할 때와 PC 에서 저장할 때
+   다른 그림으로 나왔다. 좁은 화면에서는 폭을 줄이는 대신 통째로 축소해 보여 준다. */
 .canvas{
-  width:100%; max-width:var(--canvas-w,560px);
+  width:var(--canvas-w,560px); max-width:none;
+  transform-origin:top left;
   background:var(--cv-bg,#fff); color:var(--cv-fg,#1A1A1A);
   aspect-ratio:var(--cv-ratio,1/1);
   border-radius:6px; box-shadow:0 2px 20px rgba(0,0,0,.10);
@@ -283,27 +294,11 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6L9 17l-5-5'/%3E%3C/svg%3E");
   background-size:12px;background-position:center;background-repeat:no-repeat;
 }
-.bulkbar{
-  position:fixed;left:0;right:0;z-index:32;padding:0 var(--pad);
-  bottom:calc(var(--sheet-h,150px) + 12px);
-  display:flex;gap:8px;align-items:center;
-}
-.bulkbar .btn{height:40px;flex:1;box-shadow:var(--shadow-pop)}
-.bulkbar .btn-danger{border-radius:var(--r-ctl);background:var(--danger);border-color:var(--danger);color:#fff}
-/* 넓은 화면에서 이 막대를 .app 의 흐름에 그대로 두면 한 칸을 차지해 시트를 오른쪽으로 밀어낸다.
-   미리보기 왼쪽 끝에 세로로 띄워 어디도 밀지 않게 한다. */
-@media (min-width:900px){
-  /* 시트(오른쪽 기둥) 바로 왼쪽, 미리보기 위쪽 끝에 세운다 —
-     흐름에 두면 한 칸을 차지해 시트를 밀어내고, 왼쪽 끝에 두면 미리보기와 멀어 눈이 따라가지 못한다. */
-  .bulkbar{
-    position:fixed;left:auto;right:calc(var(--sheet-w,400px) + 16px);top:62px;bottom:auto;
-    flex-direction:column;width:132px;padding:0;
-  }
-  .bulkbar .btn{width:100%;flex:0 0 auto;height:36px;font-size:12px}
-  /* 미리보기는 남는 자리의 한가운데에 선다. 막대를 그 옆에 띄우기만 하면 캔버스 위를 덮으므로,
-     막대가 떠 있는 동안 그 폭만큼 자리를 비워 준다 — 캔버스가 왼쪽으로 물러선다. */
-  .stage.has-bulk{padding-right:calc(32px + 148px)}
-}
+/* 선택 삭제 막대 — NAV 를 눌러 들어오는 일이므로 NAV 가 있던 그 자리에 그대로 뜬다
+   [.nav-slot]. 예전에는 미리보기 위에 따로 떠서, NAV 는 열린 채 막대만 딴 데 나타났다. */
+.bulk-row{display:flex;gap:8px;align-items:center;padding:0 var(--pad) 6px}
+.bulk-row .btn{height:var(--ctl);flex:1;font-size:12px}
+.bulk-row .btn-danger{border-radius:var(--r-ctl);background:var(--danger);border-color:var(--danger);color:#fff}
 
 .pagemark{
   position:absolute;left:0;right:0;height:0;pointer-events:none;z-index:2;
@@ -337,6 +332,16 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,
 @media (prefers-reduced-motion:reduce){ .sheet,.sheet-body{transition:none} }
 .sheet-grip{flex:0 0 auto;height:22px;display:grid;place-items:center;cursor:grab;touch-action:none}
 .sheet-grip::before{content:"";width:44px;height:4px;border-radius:2px;background:var(--border-strong)}
+/* 최소화 — 손잡이만 남기고 접는다. 미리보기를 넓게 보려고 아래로 끌어 내린 상태다.
+   위로 끌거나 손잡이를 누르면 다시 열린다. 손잡이가 없는 넓은 화면에서는 걸리지 않는다
+   (접어 놓고 창을 넓히면 다시 열 데가 없어진다).
+   .is-format / .is-tools 와 같은 자리 다툼이라, 이기려면 뒤에 와야 한다. */
+@media (max-width:899.98px){
+  .sheet.is-min{max-height:none}
+  .sheet.is-min .dock,.sheet.is-min .sheet-body{display:none}
+  /* 손잡이만 남으면 과녁이 4px 짜리 선 하나다 — 접힌 동안만 잡을 자리를 넉넉히 준다 */
+  .sheet.is-min .sheet-grip{height:34px}
+}
 
 /* 작성 묶음(독) — NAV → 콘텐츠 → 확정 단추. 이 순서는 어디서도 안 바뀐다.
    가운데 콘텐츠만 늘었다 줄었다 하고, 넘치면 자기 안에서 스크롤한다.
@@ -348,8 +353,12 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,
 .sheet-foot .btn{width:100%;height:38px;font-size:12.5px}
 .sheet-body{order:2;flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain}
 
+/* 작성창 바로 위 한 칸 — 작성창 바깥이지만 붙어 있다.
+   여기 서는 것은 둘 중 하나다: NAV(칩 + 여닫기) 이거나, 선택 삭제 막대이거나.
+   NAV 에서 시작한 일은 NAV 자리에서 이어져야 손이 딴 데로 안 간다. */
+.nav-slot{flex:0 0 auto}
 /* NAV — 칩 줄과 여닫는 단추가 한 줄. 닫히면 칩이 사라지고 단추만 남는다. */
-.nav-row{display:flex;align-items:center;gap:8px;padding:0 var(--pad) 8px}
+.nav-row{display:flex;align-items:center;gap:8px;padding:0 var(--pad) 6px}
 .nav-row #btnNav{flex:0 0 auto;margin-left:auto}
 
 .composer{display:flex;gap:10px;align-items:flex-end;padding:0 var(--pad)}
@@ -677,9 +686,9 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,
 @media (min-width:900px){
   .app{flex-direction:row}
   .stage{padding:32px}
-  .canvas{max-width:min(var(--canvas-w,620px),100%)}
-  /* 미리보기는 창 크기나 옆 막대에 따라 커졌다 작아졌다 하면 안 된다 — 한 값으로 못 박는다 */
-  :root{--sheet-w:400px;--canvas-w:560px}
+  /* 미리보기는 창 크기나 옆 막대에 따라 커졌다 작아졌다 하면 안 된다 — 한 값으로 못 박는다.
+     캔버스 폭은 화면과 무관하게 :root 의 --canvas-w 하나로만 정해진다. */
+  :root{--sheet-w:400px}
   .sheet{
     position:relative;inset:auto;flex:0 0 var(--sheet-w);width:var(--sheet-w);max-height:none;height:100%;
     border-radius:0;border-left:1px solid var(--border);box-shadow:none;padding-top:14px;
@@ -695,14 +704,14 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,
 
        도구            ← 위 절반
        ────
-       삽입 메뉴
+       삽입 메뉴 (NAV) ← 선택 삭제 중에는 이 자리에 그 막대가 선다
        작성창          ← 손이 가장 자주 가는 자리라 아래 묶음의 맨 위
-       블록 서식       ← 방금 쓴 것을 다듬는 자리
+       블록 서식       ← 블록을 골랐을 때만. 그냥 쓰는 중에는 안 뜬다
 
      [+] 는 삽입 막대를 여닫는 단추였으니 늘 열려 있는 여기서는 뺀다. */
   /* 위 절반은 도구, 아래 절반은 작성 묶음 — 안쪽에 무엇이 들었든 이 비율은 그대로다.
-     비율을 내용에 맡기면 서식이 접히는 순간(HTML 을 적을 때 등) 도구가 위를 다 먹고
-     작성창이 바닥으로 밀려 내려간다. 반씩 못 박고 넘치는 쪽만 각자 스크롤한다. */
+     비율을 내용에 맡기면 서식이 접히는 순간(그냥 쓰는 중 · HTML 을 적을 때) 도구가 위를
+     다 먹고 작성창이 바닥으로 밀려 내려간다. 반씩 못 박고 넘치는 쪽만 각자 스크롤한다. */
   .sheet-body{order:1;flex:0 0 50%;min-height:0;overflow-y:auto}
   .dock{order:2;flex:1 1 50%;min-height:0;border-top:2px solid var(--border-strong)}
   .sheet-head{padding-top:12px}
@@ -786,7 +795,11 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,
 
 <div class="app">
   <main class="stage" id="stage">
-    <div class="canvas is-empty" id="canvas"></div>
+    <!-- 캔버스는 늘 제 논리 폭(--canvas-w)으로 짜인다. 화면이 그보다 좁으면 이 감싸개가
+         통째로 줄여 보여 준다 — 저장되는 그림은 어느 기기에서든 같다. [fitCanvas] -->
+    <div class="canvas-fit" id="canvasFit">
+      <div class="canvas is-empty" id="canvas"></div>
+    </div>
   </main>
 
   <section class="sheet" id="sheet" aria-label="편집 시트">
@@ -795,16 +808,21 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,
     <!-- ── 작성 묶음(독) ────────────────────────────────────────────
          언제나 같은 세 칸이다. 무엇을 하든 자리는 안 바뀌고 가운데 내용만 갈린다.
 
-           NAV      [칩들…] [+/×]   ← 늘 맨 위. 닫히면 [+] 만 남는다.
-           콘텐츠   NAV 에서 고른 것에 딸린 내용 (기본은 작성창 + 서식)
+           NAV      [칩들…] [+/×]   ← 작성창 바로 위. 닫히면 [+] 만 남는다.
+                                       선택 삭제로 들어가면 NAV 는 닫히고 이 자리에 그 막대가 선다.
+           콘텐츠   작성창. 고른 블록이 있거나 사진·서명을 꽂는 중이면 그 아래에 서식·편집기가 붙는다
            확정     그 콘텐츠를 확정하는 단추 하나 (묶음의 마지막)          -->
     <div class="dock" id="dock">
       <div class="sheet-head" id="sheetHead">
-        <div class="nav-row" id="navRow">
-          <div class="insert-bar" id="insertBar" hidden></div>
-          <button type="button" class="icb is-ghost" id="btnNav" aria-label="요소 삽입">
-            <svg viewBox="0 0 24 24" id="navIcon"><path d="M12 5v14M5 12h14"/></svg>
-          </button>
+        <!-- 작성창 바깥이지만 바로 위에 붙는 한 칸. NAV 이거나 선택 삭제 막대이거나 — 자리는 하나다. -->
+        <div class="nav-slot" id="navSlot">
+          <div class="nav-row" id="navRow">
+            <div class="insert-bar" id="insertBar" hidden></div>
+            <button type="button" class="icb is-ghost" id="btnNav" aria-label="요소 삽입">
+              <svg viewBox="0 0 24 24" id="navIcon"><path d="M12 5v14M5 12h14"/></svg>
+            </button>
+          </div>
+          <div class="bulk-row" id="bulkRow" hidden></div>
         </div>
         <div class="composer">
           <div class="composer-input" id="composerInput">
@@ -1029,6 +1047,8 @@ const S = {
   colors: { text: '#D55F61', highlight: '#FFE79A', recent: [] },
   ui: {
     stage: 'composer', tool: 'character', insertMode: null, navOpen: false,
+    /* 손잡이를 아래로 끌어 시트를 손잡이만 남기고 접었는가 (좁은 화면 전용) */
+    min: false,
     selectedBlockId: null, editingCharacterId: null, charDraft: null,
     editingThemeId: null, themeDraft: null,
     /* 새로 꽂을 사진·서명을 고르는 중인가 — 그때는 서식 패널이 그 편집기를 편다 */
@@ -1434,7 +1454,7 @@ function renderCanvas() {
 
   if (isFit()) {
     /* 내용에 맞춤 — 폭만 사람이 정하고 높이는 쓴 만큼 따라온다. 나눌 장도 없다. */
-    cv.style.setProperty('--canvas-w', (S.canvas.width ?? 560) + 'px');
+    cv.style.setProperty('--canvas-w', (S.canvas.width ?? CANVAS_W) + 'px');
     cv.style.aspectRatio = 'auto'; cv.style.height = 'auto'; cv.style.minHeight = '0';
   } else {
     /* 비율 지정 — 미리보기는 '나올 그림' 그 자체여야 한다.
@@ -1442,7 +1462,7 @@ function renderCanvas() {
        무엇이 나올지 가늠이 안 된다. 그래서 한 장 높이의 정수배로만 세운다 —
        한 장이면 딱 그 비율, 두 장이면 그 비율 두 개를 쌓은 꼴이다.
        (재는 동안에는 늘어날 수 있게 열어 두고, 잰 뒤 아래에서 못 박는다.) */
-    cv.style.removeProperty('--canvas-w');
+    cv.style.setProperty('--canvas-w', CANVAS_W + 'px');
     cv.style.aspectRatio = 'auto';
     cv.style.height = 'auto';
     cv.style.minHeight = pageBox().h + 'px';
@@ -1453,7 +1473,33 @@ function renderCanvas() {
     cv.style.height = h + 'px';
     cv.style.minHeight = h + 'px';
   }
+  fitCanvas();
 }
+
+/* ── 미리보기 축소 ────────────────────────────────────────────
+   캔버스는 화면 폭과 상관없이 늘 정해진 논리 폭으로 짠다 — 비율 지정은 560px 로 못 박고,
+   내용에 맞춤은 사람이 정한 폭을 그대로 쓴다. 그래야 어느 기기에서 저장하든 줄바꿈도
+   말풍선 폭도 같은 그림이 나온다.
+   (예전에는 캔버스가 화면 폭까지 좁아져, 아이폰에서 저장하면 한 줄에 들어가는 글자 수가
+    PC 의 절반이 되고 말풍선 좌우 폭이 딴판으로 나왔다.)
+   화면이 그보다 좁을 때는 폭을 줄이는 대신 다 짜 놓은 것을 통째로 축소해 보여 준다.
+   transform 은 자리를 안 줄여 주므로 줄어든 만큼의 자리는 감싸개가 대신 잡는다. */
+const CANVAS_W = 560;
+function fitCanvas() {
+  const cv = $('#canvas'), box = $('#canvasFit'), stage = $('#stage');
+  if (!cv || !box || !stage) return;
+  const cs = getComputedStyle(stage);
+  const avail = stage.clientWidth - parseFloat(cs.paddingLeft || 0) - parseFloat(cs.paddingRight || 0);
+  /* offsetWidth/Height 는 transform 을 안 탄다 — 늘 축소 전 논리 크기다 */
+  const w = cv.offsetWidth || 1, h = cv.offsetHeight || 1;
+  const k = avail > 0 ? Math.min(1, avail / w) : 1;
+  cv.style.transform = k < 1 ? `scale(${k})` : 'none';
+  box.style.width = Math.round(w * k) + 'px';
+  box.style.height = Math.round(h * k) + 'px';
+}
+/* '내용에 맞춤' 은 높이가 내용 따라 늘어난다 — 글꼴이 늦게 붙어 키가 달라져도 감싸개가
+   따라오게 해 둔다. 감싸개 크기가 변해도 캔버스 크기는 안 변하므로 되먹이지 않는다. */
+if (window.ResizeObserver) new ResizeObserver(() => fitCanvas()).observe($('#canvas'));
 
 /* 같은 사람이 연달아 말하는가 — 발화자가 없는(익명) 말풍선끼리도 같은 줄기로 본다.
    사이에 가로선·이미지가 끼면 그쪽이 prev/next 가 되어 줄기가 자연히 끊긴다. */
@@ -1630,6 +1676,9 @@ function setStage(st) {
      칩을 눌러 들어온 길은 그 핸들러가 다시 열어 준다. */
   S.ui.navOpen = false;
   S.ui.stage = st;
+  /* 접어 둔 채로 자리를 옮기는 일은 없다 — 블록을 골랐든 도구를 열었든 시트는 다시 펴진다.
+     안 펴면 눌렀는데 아무 일도 안 일어난 것처럼 보인다. */
+  S.ui.min = false;
   if (st !== 'tools') { S.ui.editingCharacterId = null; S.ui.charDraft = null; S.ui.editingThemeId = null; S.ui.themeDraft = null; }
   /* 블록 편집은 서식 단계에서만 산다. 어느 경로로 빠져나가든 작성창을 비운다. */
   if (st !== 'format' && S.ui.selectedBlockId) endEdit();
@@ -1847,18 +1896,20 @@ const BLOCK_OWN_NAME = {
 
 function renderFormat() {
   const wrap = $('#formatWrap');
-  /* 넓은 화면에서는 블록 서식도 늘 보인다. 고른 블록이 없으면 전체 기본 서식을 다룬다.
-     HTML 을 적는 동안에는 물러난다 — 태그를 그대로 넣는 자리라 글자 서식이 낄 데가 없다.
-     그래도 화면이 출렁이지 않는 건 위아래를 반씩 못 박아 두었기 때문이다(CSS 50%):
-     서식이 빠져도 작성창은 제자리에 남고 아래쪽만 비워진다. */
-  /* 작성 묶음이 보이는 동안에는 늘 함께 보인다 — 고른 블록이 없으면 전체 기본 서식을 다룬다.
-     HTML 을 적는 동안만 물러난다(태그를 그대로 넣는 자리라 글자 서식이 낄 데가 없다). */
-  const on = S.ui.insertMode !== 'html';
+  /* 서식은 '고친다' 는 뜻이다 — 고칠 것이 정해졌을 때만 편다.
+     처음 상태(그냥 새 글을 쓰는 중)에는 작성창 하나만 남긴다. 그때 여기 서 있던 서식은
+     아무 블록에도 안 걸린 «전체 기본값» 이라, 쓰는 사람 눈에는 '지금 쓰는 글의 서식'
+     처럼 보이면서 실제로는 그렇지 않은 손잡이였다. 전체 기본값은 도구 › 서식 설정에 있다.
+       · 블록을 고른 동안        — 그 블록의 서식
+       · 사진·서명을 꽂는 동안   — 그 편집기
+       · HTML 을 적는 동안       — 아무것도 (태그를 그대로 넣는 자리라 글자 서식이 낄 데가 없다) */
+  const b = selBlock();
+  const on = S.ui.insertMode !== 'html' && (!!b || !!S.ui.newKind);
   wrap.hidden = !on;
-  if (!on) return;
-  const b = selBlock(), g = fmtStore();
-  wrap.innerHTML = '';
   _confirm = null;          /* 사진 편집기가 있으면 아래에서 다시 걸어 준다 */
+  if (!on) { wrap.innerHTML = ''; return; }
+  const g = fmtStore();
+  wrap.innerHTML = '';
 
   /* 새로 꽂는 중이면 빈 편집기부터 편다 — 고를 블록이 아직 없다 */
   if (!b && S.ui.newKind) {
@@ -2051,14 +2102,19 @@ function renderFormat() {
 function toggleBulk(on) {
   S.ui.bulk = on;
   S.ui.picked = new Set();
-  if (on) { endEdit(); S.ui.insertMode = null; }
+  /* NAV 에서 시작한 일이지만 NAV 안에서 이어지지는 않는다 — 칩을 접고 그 자리를 내준다.
+     열어 둔 채로 두면 '삽입 메뉴' 와 '지울 것 고르기' 가 한 화면에 겹쳐 뜬다. */
+  if (on) { endEdit(); S.ui.insertMode = null; S.ui.navOpen = false; }
   render();
 }
+/* NAV 가 있던 그 한 칸에 그대로 선다 [.nav-slot] — 눌러서 들어온 자리에서 이어진다. */
 function renderBulkBar() {
-  const old = document.querySelector('.bulkbar'); if (old) old.remove();
-  const stage = $('#stage'); if (stage) stage.classList.toggle('has-bulk', !!S.ui.bulk);
+  const row = $('#bulkRow'), nav = $('#navRow');
+  row.innerHTML = '';
+  row.hidden = !S.ui.bulk;
+  nav.hidden = !!S.ui.bulk;
   if (!S.ui.bulk) return;
-  const bar = el('div', 'bulkbar');
+  const bar = row;
   const n = S.ui.picked ? S.ui.picked.size : 0;
   const all = el('button', 'btn btn-quiet', n === S.blocks.length ? '전체 해제' : '전체 선택');
   all.onclick = () => {
@@ -2078,7 +2134,6 @@ function renderBulkBar() {
   cancel.style.flex = '0 0 auto';
   cancel.onclick = () => { S.ui.bulk = false; S.ui.picked = new Set(); backToDefault(); };
   bar.append(all, del, cancel);
-  document.querySelector('.app').appendChild(bar);
 }
 
 function fontSelect(cur, on) {
@@ -2820,7 +2875,7 @@ function panelCanvas(p) {
     r.oninput = () => { c.width = +r.value; val.textContent = c.width + 'px'; renderCanvas(); };
     r.onchange = () => save();
     body.appendChild(r);
-    const note = el('div', 'lab-sub', '화면이 이 값보다 좁으면 화면 너비까지만 넓어집니다.');
+    const note = el('div', 'lab-sub', '화면이 이 값보다 좁으면 통째로 줄여서 보여 줍니다 — 저장되는 그림은 늘 이 폭 그대로입니다.');
     note.style.marginTop = '6px';
     body.appendChild(note);
   } else {
@@ -3591,6 +3646,18 @@ function copyTypography(src, dst) {
   }
 }
 function captureClone(cv) {
+  /* 좁은 화면에서는 미리보기를 통째로 줄여 두었다 [fitCanvas]. getBoundingClientRect 는
+     그 축소를 그대로 타므로, 재는 동안만 축소를 풀어 늘 논리 크기로 잰다.
+     여기서는 아무것도 기다리지 않으니(전부 동기) 푼 모습이 화면에 그려질 틈은 없다. */
+  const keepTransform = cv.style.transform;
+  if (keepTransform && keepTransform !== 'none') cv.style.transform = 'none';
+  try {
+    return captureCloneAt(cv);
+  } finally {
+    if (keepTransform && keepTransform !== 'none') cv.style.transform = keepTransform;
+  }
+}
+function captureCloneAt(cv) {
   const w = Math.ceil(cv.offsetWidth), h = Math.ceil(cv.offsetHeight);
   const host = el('div');
   host.setAttribute('aria-hidden', 'true');
@@ -3975,6 +4042,7 @@ function render() {
   renderBulkBar();
   $('#sheet').classList.toggle('is-format', S.ui.stage === 'format');
   $('#sheet').classList.toggle('is-tools', S.ui.stage === 'tools');
+  $('#sheet').classList.toggle('is-min', !!S.ui.min);
   requestAnimationFrame(measureSheet);
 }
 
@@ -4215,19 +4283,25 @@ document.querySelectorAll('.tab').forEach(t => t.onclick = () => {
 (() => {
   const grip = $('#grip');
   /* 서식(슬라이드업)은 손잡이로 열지 않는다 — 블록을 골랐을 때만 자동으로 열린다.
-     그래서 손잡이가 오가는 단계는 컴포저 ↔ 도구 둘뿐이다. */
-  const ORDER = ['composer', 'tools'];
+     그래서 손잡이가 오가는 단계는 셋이다: 접힘 ↔ 작성 ↔ 도구.
+     맨 아래 '접힘' 은 시트를 손잡이만 남기고 치워 미리보기를 넓게 보는 자리다. */
+  const ORDER = ['min', 'composer', 'tools'];
   const STEP = 26;                       /* 한 단계 올라가는 데 필요한 거리 */
-  let y0 = null, base = 0, moved = false, pid = null;
+  let y0 = null, base = 1, moved = false, pid = null;
 
   const go = i => {
     const st = ORDER[clamp(i, 0, ORDER.length - 1)];
-    if (st !== S.ui.stage) setStage(st);
+    if (st === 'min') { if (!S.ui.min) { S.ui.min = true; render(); } return; }
+    const wasMin = S.ui.min;
+    S.ui.min = false;
+    if (st !== S.ui.stage) setStage(st);      /* setStage 가 다시 그린다 */
+    else if (wasMin) render();
   };
 
   grip.addEventListener('pointerdown', e => {
-    /* 서식 단계는 ORDER 에 없다(-1). 컴포저로 쳐서 아래로 끌면 편집이 닫히게 한다. */
-    y0 = e.clientY; base = Math.max(0, ORDER.indexOf(S.ui.stage)); moved = false; pid = e.pointerId;
+    /* 서식 단계는 ORDER 에 없다(-1). 작성 단계로 쳐서, 아래로 끌면 편집부터 닫히게 한다. */
+    y0 = e.clientY; moved = false; pid = e.pointerId;
+    base = S.ui.min ? 0 : Math.max(1, ORDER.indexOf(S.ui.stage));
     try { grip.setPointerCapture(e.pointerId); } catch (_) { }
   });
   /* 끄는 도중에 바로 단계가 바뀐다 — 떼야 반응하면 안 먹은 것처럼 느껴진다 */
@@ -4241,7 +4315,8 @@ document.querySelectorAll('.tab').forEach(t => t.onclick = () => {
   const end = e => {
     if (y0 == null || (e && e.pointerId !== pid)) return;
     const d = y0 - e.clientY; y0 = null; pid = null;
-    if (!moved) go(S.ui.stage === 'composer' ? 1 : 0);   /* 탭 = 열기·닫기 */
+    /* 탭 = 한 단계 열기. 접혀 있으면 작성으로, 작성이면 도구로, 도구면 도로 작성으로. */
+    if (!moved) go(S.ui.min ? 1 : S.ui.stage === 'composer' ? 2 : 1);
     else go(base + Math.round(d / STEP));
   };
   grip.addEventListener('pointerup', end);
@@ -4252,6 +4327,7 @@ document.querySelectorAll('.tab').forEach(t => t.onclick = () => {
 let _rz;
 window.addEventListener('resize', () => {
   autoGrow(); measureSheet(); closePop();
+  fitCanvas();                       /* 남는 폭이 달라지면 축소율도 달라진다 */
   clearTimeout(_rz);
   _rz = setTimeout(() => { if (!isFit()) render(); else renderPageMarks(); }, 120);
 });

@@ -4,3 +4,6 @@ Thumbs.db
 node_modules/
 .vscode/
 .idea/
+
+# 레퍼런스 (커밋하지 않음)
+reference/

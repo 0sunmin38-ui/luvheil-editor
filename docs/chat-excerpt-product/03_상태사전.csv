@@ -1,0 +1,7 @@
+ST ID,Status,상태,값,진입 트리거,해제 트리거,영향
+ST-001,change,canvas.mode,ratio / fit,캔버스 설정 세그먼트,다른 모드 선택,고정 비율 분할 또는 가변 높이
+ST-002,new,ui.panel,min / compact / full,그립 탭·드래그·편집 진입,다른 스냅 이동,모바일 시트 점유 높이
+ST-003,new,ui.previewZoom,0.5~4,줌 버튼·핀치·수정키+휠,맞춤 버튼,화면 미리보기만 변경
+ST-004,live,ui.stage,composer / format / tools,입력·블록 선택·도구 선택,기본 복귀,표시할 편집 콘텐츠
+ST-005,live,blocks,블록 배열,붙여넣기·추가·불러오기,삭제,캔버스와 PNG 원본
+ST-006,live,localStorage,저장 성공 / quota error,상태 변경,공간 확보,설정·작업 복원

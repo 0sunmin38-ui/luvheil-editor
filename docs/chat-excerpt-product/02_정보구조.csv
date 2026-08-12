@@ -1,0 +1,8 @@
+SCR ID,Status,화면·상태,구분,진입,종료·전이,비고
+SCR-001,change,편집 메인,page,앱 진입,이미지 저장·설정 입출력,단일 URL
+SCR-002,change,입력 패널 compact,state,기본·전체에서 아래로 슬라이드,전체 또는 최소,입력 필드 중심
+SCR-003,change,편집 패널 full,state,도구·삽입·블록 선택·위로 슬라이드,compact 또는 최소,도구와 기타 편집의 높이 통일
+SCR-004,change,패널 최소화,state,아래로 끝까지 슬라이드,compact,손잡이만 유지
+SCR-005,new,미리보기 줌 상태,state,버튼·핀치·Ctrl/⌘+휠,맞춤 초기화,저장 배율과 독립
+SCR-006,live,이미지 저장 결과,overlay,이미지 저장,공유·다운로드·닫기,모바일 공유 지원
+SCR-007,live,이미지 자르기,modal,이미지 추가,원본·확인·취소,출력 블록용 이미지 편집

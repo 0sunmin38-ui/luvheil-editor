@@ -4049,6 +4049,12 @@ async function exportPNG() {
   const wasSel = S.ui.selectedBlockId;
   S.ui.selectedBlockId = null;
   renderCanvas();
+  toast('저장 준비 중…');
+  /* renderCanvas 는 <img> 를 새로 만든다. 이미지가 높이를 얻기 전에 캔버스를 재면
+     캡처용 복제본 높이가 짧게 고정되어, 뒤늦게 나타난 아래쪽 내용이 잘린다.
+     원본의 이미지와 레이아웃이 모두 안정된 다음 페이지 범위와 높이를 잰다. */
+  await waitForImages(cv);
+  await raf2();
   cv.querySelectorAll('.pagemark').forEach(n => n.remove());
 
   const ranges = isFit() ? null : pageRanges();
@@ -4056,7 +4062,7 @@ async function exportPNG() {
   const rows = pageRows();
   const stamp = new Date().toISOString().slice(0, 10);
 
-  toast(multi ? `${ranges.length}장으로 저장합니다…` : '저장 준비 중…');
+  if (multi) toast(`${ranges.length}장으로 저장합니다…`);
   try {
     const hti = await loadHTI();
     /* fonts.ready 만으로는 부족하다 — 쓰인 글자·굵기의 서브셋을 강제로 받아 둔다 */

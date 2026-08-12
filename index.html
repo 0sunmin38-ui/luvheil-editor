@@ -859,7 +859,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,
 <header class="topbar">
   <span class="brand">채팅 발췌기</span>
   <div class="topbar-actions">
-    <button type="button" class="btn btn-quiet" id="btnReset" title="작성 내용과 모든 설정 초기화">↺<span class="btn-word"> 전체 초기화</span></button>
+    <button type="button" class="btn btn-quiet" id="btnReset" title="캐릭터는 남기고 작성 내용과 설정 초기화">↺<span class="btn-word"> 전체 초기화</span></button>
     <button type="button" class="btn btn-quiet" id="btnImport" title="내보낸 설정 파일 불러오기">↓<span class="btn-word"> 설정 불러오기</span></button>
     <button type="button" class="btn btn-quiet" id="btnExport" title="캐릭터·서식·캔버스·테마를 파일로">↑<span class="btn-word"> 설정 내보내기</span></button>
     <button type="button" class="btn btn-primary" id="btnSave" title="캔버스를 PNG 로 저장">🖼<span class="btn-word"> 이미지 저장</span></button>
@@ -4494,9 +4494,12 @@ $('#btnSave').onclick = () => exportPNG();
 $('#btnExport').onclick = () => exportSettings();
 $('#btnImport').onclick = () => $('#settingsPick').click();
 $('#btnReset').onclick = () => {
-  const ok = window.confirm('작성한 글·이미지·캐릭터·테마·서식·캔버스 설정을 모두 지울까요?\n이 작업은 되돌릴 수 없습니다.');
+  const ok = window.confirm('캐릭터와 프로필 이미지는 남기고 작성한 글·이미지·테마·서식·캔버스 설정을 모두 지울까요?\n이 작업은 되돌릴 수 없습니다.');
   if (!ok) return;
-  localStorage.removeItem(KEY);
+  /* 캐릭터와 그 안의 프로필 data URL 만 새 저장본으로 옮기고 나머지는 기본값으로 돌린다. */
+  const keptCharacters = S.characters;
+  /* remove 후 쓰면 저장 실패 시 캐릭터까지 잃는다. 기존 값을 바로 덮어써 실패해도 원본을 지킨다. */
+  localStorage.setItem(KEY, JSON.stringify({ v: SCHEMA, characters: keptCharacters }));
   localStorage.removeItem(PALETTE_KEY);
   location.reload();
 };

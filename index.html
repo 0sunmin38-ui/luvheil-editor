@@ -3827,6 +3827,10 @@ function captureCloneAt(cv) {
         ['height', 'min-height', 'max-height'].forEach(k => c.style.setProperty(k, r.height.toFixed(2) + 'px', 'important'));
       }
     }
+    /* HTML 카드는 이미 div·flex·br 로 자체 줄과 구조를 가진다. 일반 문장처럼 모든
+       soft wrap 을 <br> 로 굳히고 white-space:pre 를 상속시키면 내부 레이아웃이 늘어나
+       캡처 루트 아래로 빠진다. HTML 구조는 그대로 렌더링한다. */
+    if (f.classList.contains('blk-html')) continue;
     if (getComputedStyle(f).textAlign === 'justify') continue;
     const pts = softBreaks(f);
     if (!pts.length) continue;
@@ -4083,6 +4087,18 @@ async function exportPNG() {
         await waitForImages(snap.clone);
         await bakeImagesForExport(snap.clone);
         await raf2();
+        /* 내용 맞춤은 HTML·이미지 로딩 뒤 복제본의 실제 높이가 늘 수 있다. 처음 잰 h 로
+           루트를 계속 자르지 말고 넘친 전체 높이까지 캡처 상자 자체를 확장한다. */
+        if (isFit()) {
+          const fullH = Math.max(snap.h, Math.ceil(snap.clone.scrollHeight));
+          if (fullH !== snap.h) {
+            snap.h = fullH;
+            snap.host.style.height = fullH + 'px';
+            ['height', 'min-height', 'max-height'].forEach(k =>
+              snap.clone.style.setProperty(k, fullH + 'px', 'important'));
+            await raf2();
+          }
+        }
         const scale = exportRatio(snap.w, snap.h);
         return await renderExact(hti, snap.clone, snap.w, snap.h, scale, css, bg);
       } finally { snap.host.remove(); }

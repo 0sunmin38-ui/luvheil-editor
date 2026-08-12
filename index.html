@@ -125,6 +125,13 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,
   font-size:var(--cv-fs,15px); line-height:var(--cv-lh,1.6); letter-spacing:var(--cv-ls,0);
   touch-action:pan-y;             /* 더블탭 확대 차단 · 세로 스크롤만 허용 */
 }
+/* 비율 지정 한 장에 들어가는 내용은 위에 붙이지 않고 세로 가운데에 놓는다.
+   여러 장은 페이지를 나눌 때만 각 장에 이 클래스를 붙여 개별적으로 가운데 맞춘다. */
+.canvas.ratio-center{justify-content:center}
+/* 평소 서명은 margin-top:auto 로 바닥에 붙지만, 이 자동 여백이 있으면 flex 의
+   justify-content:center 가 쓸 남는 공간이 사라진다. 비율 한 장에서는 서명까지
+   블록 묶음에 포함해 위아래 중앙에 놓는다. */
+.canvas.ratio-center .blk.is-footer{margin-top:0}
 /* 배경 이미지 — 회전·흐림이 캔버스 밖으로 새지 않게 별도 레이어로 깐다 */
 .cv-bg{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0}
 .cv-bg i{
@@ -1494,6 +1501,8 @@ const RATIOS = { '9:16': 9 / 16, '3:4': 3 / 4, '1:1': 1, '4:3': 4 / 3, '16:9': 1
 
 function renderCanvas() {
   const cv = $('#canvas'), th = theme(), f = fmt();
+  /* 이전 단일 장 렌더의 중앙 정렬이 페이지 높이 계산에 섞이지 않게 먼저 푼다. */
+  cv.classList.remove('ratio-center');
   cv.style.setProperty('--cv-ratio', String(RATIOS[S.canvas.ratio] || 1));
   cv.style.setProperty('--cv-bg', th.bg);
   cv.style.setProperty('--cv-fg', th.fg);
@@ -1593,6 +1602,7 @@ function renderCanvas() {
     const h = pageBox().h * Math.max(1, pages || 1);
     cv.style.height = h + 'px';
     cv.style.minHeight = h + 'px';
+    cv.classList.toggle('ratio-center', pages <= 1);
   }
   fitCanvas();
 }
@@ -4066,6 +4076,8 @@ async function exportPNG() {
     for (let i = 0; i < ranges.length; i++) {
       const [from, to] = ranges[i];
       rows.forEach((n, j) => n.classList.toggle('row-off', j < from || j >= to));
+      /* 한 장만 남긴 저장용 캔버스에서는 그 장의 내용 묶음을 세로 중앙에 둔다. */
+      cv.classList.add('ratio-center');
       await raf2();
       /* 장마다 다시 잰다 — 남은 행이 맨 위부터 쌓이면서 줄 위치가 달라진다 */
       urls.push(await shoot());

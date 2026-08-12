@@ -2,6 +2,8 @@
 
 단일 HTML 파일로 동작하는 채팅 발췌 도구.
 
+**https://0sunmin38-ui.github.io/luvheil-editor/**
+
 ## 실행
 
 ```bash

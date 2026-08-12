@@ -3872,6 +3872,34 @@ function waitForImages(root) {
   }));
 }
 
+/* iOS Safari 는 화면에서 정상 표시한 HEIC/WebP/data URL 이미지도 html-to-image 가 만드는
+   SVG foreignObject 안에서는 다시 디코드하지 못해, 저장 결과에서 <img> 만 투명하게 빠질
+   때가 있다. 캡처용 복제본에 한해 이미 디코드된 픽셀을 PNG data URL 로 다시 구워 넣는다.
+   원본 상태는 건드리지 않으므로 기존에 등록해 둔 이미지에도 바로 적용된다. */
+async function bakeImagesForExport(root) {
+  const imgs = [...root.querySelectorAll('img')];
+  await Promise.all(imgs.map(async img => {
+    try {
+      if (!img.complete || !img.naturalWidth || !img.naturalHeight) return;
+      const maxSide = 4096;
+      const k = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
+      const cv = document.createElement('canvas');
+      cv.width = Math.max(1, Math.round(img.naturalWidth * k));
+      cv.height = Math.max(1, Math.round(img.naturalHeight * k));
+      const g = cv.getContext('2d');
+      if (!g) return;
+      g.drawImage(img, 0, 0, cv.width, cv.height);
+      const png = cv.toDataURL('image/png');
+      if (!png || png === 'data:,') return;
+      img.src = png;
+      if (img.decode) await img.decode().catch(() => { });
+    } catch (e) {
+      /* 외부 HTML 안의 CORS 이미지처럼 캔버스에 못 그리는 항목은 기존 경로에 맡긴다. */
+      console.warn('저장용 이미지 PNG 변환 실패 — 원본 사용', e);
+    }
+  }));
+}
+
 /* 래스터는 검증된 toPng 을 그대로 쓴다. 원본이 toSvg 로 간 이유는 초대형 캔버스의
    배율 제어였지 글자 밀림이 아니었고, 여기서는 임베드한 글꼴(1.6MB)을 물고 SVG 를
    디코드하다 멈추는 쪽이 더 큰 문제였다.
@@ -4022,6 +4050,7 @@ async function exportPNG() {
       const snap = captureClone(cv);
       try {
         await waitForImages(snap.clone);
+        await bakeImagesForExport(snap.clone);
         await raf2();
         return await renderExact(hti, snap.clone, snap.w, snap.h, scale, css, bg);
       } finally { snap.host.remove(); }

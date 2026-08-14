@@ -1452,57 +1452,93 @@ const DEF_THEME = () => ({
    '기본값으로 되돌리기' 단추도 사라진다. */
 const PRESET_THEMES = [
   {
-    name: '무채색',
-    bg: '#EDEDEE', fg: '#424448', bubbleBg: '#FFFFFF', bubbleFg: '#424448',
-    myBubbleBg: '#424448', myBubbleFg: '#FFFFFF', highlight: '#E4E4E6',
+    name: 'simple grey',
+    bg: '#EDEDEE', fg: '#424448', bubbleBg: '#424448', bubbleFg: '#FFFFFF',
+    myBubbleBg: '#8A8F98', myBubbleFg: '#424448', highlight: '#E4E4E6',
     bubbleStyle: 'bubble', showTail: false, tailShape: 'curve',
-    bubbleRadius: 16, brDetail: true, brTL: 3, brTR: 16, brBR: 16, brBL: 16,
+    bubbleRadius: 16, brDetail: true, brTL: 2, brTR: 14, brBR: 14, brBL: 14,
+    showName: true, showAvatar: true, myName: false, myAvatar: false, roundAvatar: true,
+    header: 'none', headerTitle: '캐릭터',
+    fmt: { align: 'justify', weight: 400, font: 'KoPubWorld Dotum', size: 13, lineHeight: 1.6, letterSpacing: -0.008, blockGap: 20, vAlign: 'center' }
+  },
+  {
+    name: 'simple black',
+    bg: '#26262B', fg: '#EAEAEE', bubbleBg: '#37373E', bubbleFg: '#EAEAEE',
+    myBubbleBg: '#4A4A55', myBubbleFg: '#FFFFFF', highlight: '#4A4A55',
+    bubbleStyle: 'bubble', showTail: false, tailShape: 'curve',
+    bubbleRadius: 16, brDetail: true, brTL: 2, brTR: 14, brBR: 14, brBL: 14,
     showName: true, showAvatar: true, myName: false, myAvatar: false, roundAvatar: true,
     header: 'none', headerTitle: '캐릭터 이름 작성 또는 문구 적을 수 있습니다.',
-    fmt: { align: 'justify', weight: 400, font: 'KoPubWorld Dotum', size: 12, lineHeight: 1.65, letterSpacing: -0.008, blockGap: 20 }
+    fmt: { align: 'justify', weight: 400, font: 'Pretendard', size: 13, lineHeight: 1.6, letterSpacing: -0.008, blockGap: 20, vAlign: 'center' }
+  },
+  {
+    name: 'ebook',
+    bg: '#FFFFFF', fg: '#1C1C1E', bubbleBg: '#E9E9EB', bubbleFg: '#1C1C1E',
+    myBubbleBg: '#E9E9EB', myBubbleFg: '#1C1C1E', highlight: '#CFE5FF',
+    bubbleStyle: 'quote', showTail: true, tailShape: 'curve',
+    bubbleRadius: 18, brDetail: false, brTL: 12, brTR: 12, brBR: 12, brBL: 12,
+    showName: true, showAvatar: false, myName: true, myAvatar: false, roundAvatar: true,
+    header: 'kakao', headerTitle: '캐릭터이름',
+    fmt: { align: 'justify', weight: 400, font: 'Chosun Sinmyungjo', size: 13, lineHeight: 1.7, letterSpacing: -0.008, blockGap: 20, vAlign: 'top' }
   },
   {
     name: 'newspaper',
-    bg: '#EDEDEE', fg: '#424448', bubbleBg: '#424448', bubbleFg: '#424448',
+    bg: '#E2E2E2', fg: '#424448', bubbleBg: '#424448', bubbleFg: '#424448',
     myBubbleBg: '#424448', myBubbleFg: '#FFFFFF', highlight: '#E4E4E6',
-    bubbleStyle: 'quote', showTail: true, tailShape: 'curve',
+    /* 맨글이라 말풍선이 없다 — 연속 발화를 묶으면 이름 없이 이어져 누가 말하는지 흐려진다 */
+    bubbleStyle: 'plain', showTail: true, tailShape: 'curve', groupRuns: false,
     bubbleRadius: 12, brDetail: false, brTL: 12, brTR: 12, brBR: 12, brBL: 12,
     showName: true, showAvatar: false, myName: true, myAvatar: false, roundAvatar: true,
     header: 'news', headerTitle: '문장, 캐릭터 이름 등 내용 작성 가능합니다.',
-    fmt: { align: 'justify', weight: 400, font: 'Chosun Sinmyungjo', size: 11, lineHeight: 1.6, letterSpacing: 0, blockGap: 20 }
+    fmt: { align: 'justify', weight: 400, font: 'Bookk Myungjo', size: 13, lineHeight: 1.5, letterSpacing: -0.008, blockGap: 20, vAlign: 'top' }
   },
   {
     name: '카카오',
-    bg: '#B2C7D9', fg: '#3A3A3A', bubbleBg: '#FFFFFF', bubbleFg: '#3A3A3A',
+    bg: '#B2C7D9', fg: '#424448', bubbleBg: '#FFFFFF', bubbleFg: '#3A3A3A',
     myBubbleBg: '#FEE500', myBubbleFg: '#3A2E00', highlight: '#FFE38A',
     bubbleStyle: 'bubble', showTail: true, tailShape: 'long', tailPos: 'top',
-    bubbleRadius: 8, brDetail: false, brTL: 12, brTR: 12, brBR: 12, brBL: 12,
+    bubbleRadius: 5, brDetail: false, brTL: 12, brTR: 12, brBR: 12, brBL: 12,
     showName: true, showAvatar: true, myName: false, myAvatar: false, roundAvatar: true,
     header: 'kakao', headerTitle: '캐릭터이름',
-    fmt: { align: 'left', weight: 400, font: 'Pretendard', size: 11, lineHeight: 1.4, letterSpacing: -0.005, blockGap: 20 }
+    fmt: { align: 'left', weight: 400, font: 'Pretendard', size: 13.5, lineHeight: 1.5, letterSpacing: -0.008, blockGap: 22, vAlign: 'top' }
   },
   {
-    name: '아이메시지',
+    name: 'iMessage-light',
     bg: '#FFFFFF', fg: '#1C1C1E', bubbleBg: '#E9E9EB', bubbleFg: '#1C1C1E',
     myBubbleBg: '#0B84FE', myBubbleFg: '#FFFFFF', highlight: '#CFE5FF',
     bubbleStyle: 'bubble', showTail: true, tailShape: 'curve',
     bubbleRadius: 18, brDetail: false, brTL: 12, brTR: 12, brBR: 12, brBL: 12,
-    showName: true, showAvatar: true, myName: false, myAvatar: false, roundAvatar: true,
+    showName: false, showAvatar: true, myName: true, myAvatar: false, roundAvatar: true,
     header: 'imessage', headerTitle: '캐릭터이름',
-    fmt: { align: 'left', weight: 400, font: 'Pretendard', size: 12, lineHeight: 1.6, letterSpacing: -0.008, blockGap: 20 }
+    fmt: { align: 'left', weight: 400, font: 'Pretendard', size: 12.5, lineHeight: 1.7, letterSpacing: -0.008, blockGap: 20, vAlign: 'top' }
   },
   {
-    name: '다크',
+    name: 'iMessage-dark',
     bg: '#26262B', fg: '#EAEAEE', bubbleBg: '#37373E', bubbleFg: '#EAEAEE',
-    myBubbleBg: '#4A4A55', myBubbleFg: '#FFFFFF', highlight: '#4A4A55',
+    myBubbleBg: '#0B84FE', myBubbleFg: '#FFFFFF', highlight: '#4A4A55',
     bubbleStyle: 'bubble', showTail: true, tailShape: 'curve',
-    bubbleRadius: 14, brDetail: false, brTL: 12, brTR: 12, brBR: 12, brBL: 12,
-    showName: true, showAvatar: true, myName: false, myAvatar: false, roundAvatar: true,
-    fmt: { align: 'left', weight: 400, font: 'Pretendard', size: 14, lineHeight: 1.5, letterSpacing: 0, blockGap: 20 }
+    bubbleRadius: 16, brDetail: false, brTL: 12, brTR: 12, brBR: 12, brBL: 12,
+    showName: false, showAvatar: true, myName: false, myAvatar: false, roundAvatar: true,
+    header: 'imessage', headerTitle: '캐릭터이름',
+    fmt: { align: 'left', weight: 400, font: 'Pretendard', size: 12.5, lineHeight: 1.7, letterSpacing: -0.008, blockGap: 20, vAlign: 'top' }
   },
 ];
 /* 기본으로 딸려 오는 테마인가. 이름으로 찾는다 — 이름을 바꿔 쓰면 더 이상 기본 테마가 아니다. */
 const presetOf = t => t && PRESET_THEMES.find(p => p.name === t.name);
+/* 기본 테마가 목록에 서는 «자리» 는 PRESET_THEMES 가 정한다.
+   저장된 목록은 제 순서를 그대로 들고 있어(예전 판에서 쓰던 것 · 설정 들여오기로 받은 것),
+   코드에서 차례를 바꿔도 이미 쓰던 사람 화면은 꿈쩍하지 않는다 — 여기서 한 번 맞춘다.
+   사용자가 만든 테마는 자리를 안 다툰다: 순서를 그대로 지킨 채 기본 테마 뒤에 이어 붙는다.
+   (여러 번 불러도 결과가 같아 부팅마다 그냥 돌려도 된다. 테마를 끌어 옮기는 길이 없으니
+    이 정렬이 사람이 잡아 둔 차례를 흐트러뜨릴 일도 없다.) */
+function sortThemesByPreset() {
+  if (!Array.isArray(S.themes) || !S.themes.length) return;
+  const rank = new Map(PRESET_THEMES.map((p, i) => [p.name, i]));
+  const preset = [], mine = [];
+  S.themes.forEach(t => (t && rank.has(t.name) ? preset : mine).push(t));
+  preset.sort((a, b) => rank.get(a.name) - rank.get(b.name));
+  S.themes = preset.concat(mine);
+}
 /* 그 테마를 처음 상태로 되돌린 사본. id 는 지켜야 블록·활성 테마가 안 끊긴다. */
 function freshPreset(t) {
   const p = presetOf(t);
@@ -2554,7 +2590,7 @@ function renderBlock(b, th, f, prev, next) {
    메신저 화면·신문 제호를 흉내 낸 껍데기. 캔버스 맨 위에 붙는다.
    아이콘은 전부 여기서 그린다 — 글꼴에 딸린 문자를 쓰면 기기마다 다른 그림이 나오고,
    저장본에도 그 차이가 그대로 실린다. 선 두께·색은 CSS 가 currentColor 로 맞춘다. */
-const HEADS = [['none', '없음'], ['imessage', '아이메시지'], ['kakao', '카카오'], ['news', '신문']];
+const HEADS = [['none', '없음'], ['imessage', '메시지1'], ['kakao', '메시지2'], ['news', '헤드라인']];
 /* 신문 머리는 테마가 고른 글꼴을 안 따른다 — 신문의 얼굴은 결국 그 명조다.
    제호와 옆글이 서로 다른 명조를 쓴다: 제호는 굵기 700 이 실제로 있는 조선일보명조,
    옆글은 획이 가늘어 잔글씨에 어울리는 조선신명조.
@@ -3802,11 +3838,16 @@ function openResetModal() {
     [
       ['characters', '캐릭터 프리셋', '저장한 캐릭터와 프로필 이미지를 삭제합니다.'],
       ['canvas', '캔버스', '비율, 크기, 여백을 기본값으로 되돌립니다.'],
-      ['themes', '테마 프리셋', '기본 테마 4종으로 복원하고 사용자 테마를 삭제합니다.'],
-      ['content', '내용', '작성한 글, 이미지, 서명 블록을 삭제합니다.']
+      ['themes', '테마 프리셋', `기본 테마 ${PRESET_THEMES.length}종으로 복원하고 사용자 테마를 삭제합니다.`],
+      ['content', '내용', '작성한 글, 이미지, 서명 블록을 삭제합니다.'],
+      /* 유일하게 «지우지 않는» 항목이다 — 브라우저가 들고 있던 예전 판만 버린다.
+         고친 것이 화면에 안 나올 때 쓰는 자리라, 초기화를 찾아 들어온 손이 여기서 만난다. */
+      ['cache', '앱 캐시', '브라우저가 들고 있던 예전 판을 버리고 새로 받습니다. 작성한 내용은 지워지지 않습니다.']
     ],
     '선택 항목 초기화', 'btn-danger', selected => {
     const reset = [];
+    /* 아래에서 작성창을 비우기 전에 챙겨 둔다 — 캐시만 고른 사람은 아무것도 잃지 않아야 한다 */
+    const typed = $('#ta').value || '';
     if (selected.has('characters')) {
       S.characters = [];
       S.blocks.forEach(b => { if (b.speakerId) b.speakerId = null; });
@@ -3829,10 +3870,63 @@ function openResetModal() {
     S.ui.selectedBlockId = null; S.ui.newKind = null; S.ui.newSrc = '';
     S.ui.insertMode = null; S.ui.navOpen = false; S.ui.bulk = false; S.ui.picked = new Set();
     $('#ta').value = '';
-    save(); closeModal(); render(); toast(`${reset.join(' · ')}을 초기화했습니다`);
+    save();
+    /* 캐시는 «되돌리는» 것이 아니라 «다시 받는» 것이라 맨 마지막이다 — 여기서 화면이 새로
+       뜨므로 뒤에 무엇을 더 둘 수 없다. 위의 초기화는 save() 로 이미 굳혔으니, 새로 뜬
+       화면이 그것을 그대로 물려받는다. */
+    if (selected.has('cache')) {
+      closeModal();
+      toast(reset.length ? `${reset.join(' · ')} 초기화 · 새로 받는 중…` : '캐시를 비우고 새로 받는 중…');
+      /* 무언가를 실제로 되돌렸으면 작성창도 함께 비운 것으로 친다(여태 하던 대로다).
+         캐시만 골랐으면 되돌린 것이 없으니 치던 글을 그대로 돌려준다. */
+      clearCacheAndReload(reset.length ? '' : typed);
+      return;
+    }
+    closeModal(); render(); toast(`${reset.join(' · ')}을 초기화했습니다`);
   });
 }
 
+/* ═══ 캐시 비우기 ═══════════════════════════════════════════
+   [초기화] 와는 반대쪽 일이다. 초기화는 «내가 만든 것» 을 지우고, 이쪽은 «브라우저가
+   들고 있던 것» 만 버린다 — 고쳐 올린 새 판이 안 내려오고 예전 화면이 그대로 뜨는 일이
+   여기서 생긴다. 작업 내용(localStorage)은 한 글자도 건드리지 않는다.
+   브라우저의 HTTP 캐시는 스크립트가 직접 지울 수 없다. 그래서 두 겹으로 간다 —
+   ① 문서를 캐시를 건너뛰고 다시 받아 그 자리를 새것으로 바꿔 두고 [cache:'reload'],
+   ② 그래도 예전 것이 나올까 봐 캐시에 없는 주소(?fresh=…)로 새로 연다.
+   ②가 남긴 자국은 뜨자마자 주소에서 지운다 — 아래 부팅부가 그 몫이다. */
+const DRAFT_KEY = 'chat-excerpt/draft';
+const FRESH_Q = 'fresh';
+/* 캐시를 걷어내는 데 줄 시간. 넘기면 못 걷어낸 채로 새로 받는다 — 아예 안 뜨는 것보다 낫다. */
+const CACHE_SWEEP_MS = 2500;
+/* draft 를 주면 그것을, 안 주면 지금 작성창에 있는 것을 맡아 둔다 — 초기화와 함께 부를 때는
+   호출한 쪽이 «비우기 전» 의 글을 들고 있으므로 그쪽 것을 받는다 [openResetModal]. */
+async function clearCacheAndReload(draft) {
+  /* 작성창에 치던 글은 아직 블록이 아니라 저장에 안 들어간다 — 잠깐 맡아 두었다 돌려준다 */
+  try { sessionStorage.setItem(DRAFT_KEY, draft != null ? draft : ($('#ta').value || '')); } catch (_) { }
+  let url = null;
+  try { url = new URL(location.href); url.searchParams.delete(FRESH_Q); } catch (_) { }
+  /* 아래 셋은 모두 «되면 좋은» 일이다 — 하나가 안 끝난다고 단추가 먹통이 되면 안 된다.
+     실제로 caches.keys() 가 끝내 돌아오지 않는 자리를 보았다(헤드리스 크롬의 iframe).
+     그래서 통째로 시간을 재고, 그 안에 못 끝내면 그냥 두고 새로 받는 쪽으로 넘어간다 —
+     캐시를 못 지워도 ?fresh 로 새 주소를 여는 마지막 수는 늘 남아 있다. */
+  const sweep = (async () => {
+    /* 지금은 서비스 워커도 Cache Storage 도 안 쓴다. 예전 판이 남겨 둔 것이 있으면 걷어낸다 —
+       한 번 등록된 서비스 워커는 그것을 만든 코드가 사라져도 혼자 계속 살아 있다. */
+    try {
+      if (window.caches) await Promise.all((await caches.keys()).map(k => caches.delete(k)));
+    } catch (_) { }
+    try {
+      if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations)
+        await Promise.all((await navigator.serviceWorker.getRegistrations())
+          .map(r => r.unregister().catch(() => { })));
+    } catch (_) { }
+    /* 깨끗한 주소의 캐시 자리를 새것으로 갈아 둔다 — 이번 판이 아니라 «다음 방문» 을 위한 몫이다 */
+    try { if (url) await fetch(url.href, { cache: 'reload' }); } catch (_) { }
+  })();
+  await withTimeout(sweep.catch(() => { }), CACHE_SWEEP_MS, null);
+  if (url) { url.searchParams.set(FRESH_Q, Date.now().toString(36)); location.replace(url.href); }
+  else location.reload();
+}
 /* 자르기 틀 [원본 msgCropState / clampMsgCrop / onMsgCropZoom] */
 const arOf = r => { const q = String(r || 1).split(':').map(Number); return (q[1] ? q[0] / q[1] : q[0]) || 1; };
 
@@ -3947,7 +4041,7 @@ function footerText(b) {
 function buildFooterEditor(host, block) {
   host.appendChild(el('div', 'sec-lab', '서명'));
   const guide = el('p', 'modal-sub',
-    `캔버스 맨 아래에 «캐릭터${FOOTER_SEP}제작자» 로 들어갑니다. 한쪽만 적으면 그 한쪽만 나옵니다.`);
+    `캔버스 하단 고정됩니다. 한쪽만 적으면 그 한쪽만 나옵니다.`);
   guide.style.margin = '0 0 12px';
   host.appendChild(guide);
 
@@ -4185,9 +4279,9 @@ function openAvatarModal(cur, onDone) {
    도구
    ═══════════════════════════════════════════════════════════════ */
 const HINTS = {
-  character: '대사를 말할 캐릭터를 등록합니다. 블록을 말풍선으로 바꾸면 발화자로 고를 수 있습니다.',
-  canvas: '내보낼 이미지의 크기와 여백입니다. 내용에 맞추거나, 비율을 정해 여러 장으로 나눠 저장할 수 있습니다.',
-  theme: '배경·말풍선·프로필과 글자 서식을 한 테마로 저장합니다.'
+  character: '캐릭터를 등록합니다. 블록을 말풍선으로 바꾸면 발화자로 고를 수 있습니다.',
+  canvas: '이미지의 크기와 여백입니다. 내용에 맞추거나, 비율을 정할 수 있습니다.',
+  theme: '배경·말풍선·프로필 설정·글자 서식을 한 테마로 저장합니다.'
 };
 
 function renderTools() {
@@ -4275,7 +4369,8 @@ function charEditor() {
       const copy = Object.assign({}, c); delete copy.__for;
       copy.id = uid();
       copy.name = (c.name || '캐릭터') + ' 사본';
-      copy.isMe = false;                       /* '나' 는 한 명뿐이다 */
+      /* isMe 도 그대로 따라간다 — '나' 가 여럿일 수 있게 된 뒤로는 끌 이유가 없다.
+         내 쪽 사람을 하나 만들어 두고 복제해 늘리는 것이 오히려 흔한 길이다. */
       S.characters.splice(S.characters.indexOf(stored) + 1, 0, copy);
       S.ui.editingCharacterId = copy.id; S.ui.charDraft = null;
       save(); render(); toast('캐릭터를 복제했습니다');
@@ -4337,7 +4432,10 @@ function charEditor() {
   const ok = el('button', 'btn btn-primary');
   ok.onclick = () => {
     c.name = (nameI.value || '').trim() || '이름 없음';
-    if (c.isMe) S.characters.forEach(x => { if (x.id !== c.id) x.isMe = false; });
+    /* '나' 는 여럿일 수 있다 — 켜는 순간 남을 끄지 않는다. 한 발췌에 내 쪽 사람이 둘 이상인
+       대화가 흔하고, 어차피 말풍선이 어느 쪽에 붙는지는 블록마다 고른 발화자가 정한다
+       [renderBlock 의 isMe]. 여기서 남을 건드리면 «지금 안 보는 캐릭터가 조용히 바뀌는»
+       꼴이 되어, 목록에 돌아가서야 알아차리게 된다. */
     /* __for 는 편집 중에만 쓰는 표시다 — 저장본에 섞여 들어가지 않게 떼고 넣는다 */
     const rec = Object.assign({}, c); delete rec.__for;
     if (isNew) S.characters.push(rec); else Object.assign(charOf(rec.id), rec);
@@ -4399,7 +4497,7 @@ function fontControls(g, up, light) {
     v => { g.vAlign = v; up(); }));
   /* 내용에 맞춤은 높이가 내용을 따라오므로 밀 자리가 없다 — 왜 안 먹는지 여기서 밝힌다 */
   if (isFit()) {
-    const note = el('div', 'lab-sub', '판형이 «비율을 지정» 일 때만 적용됩니다 — 내용에 맞춤은 높이가 내용을 따라갑니다.');
+    const note = el('div', 'lab-sub', '판형이 «비율을 지정» 일 때만 적용됩니다.');
     note.style.marginTop = '6px';
     r2b.appendChild(note);
   }
@@ -4433,7 +4531,7 @@ function panelCanvas(p) {
   /* '설정' 은 도구 이름과 겹치고 '비율' 은 두 갈래 중 한쪽 이름이라 둘 다 제목으로는 못 쓴다.
      판형 — 한 장을 어떤 꼴로 뽑을지, 인쇄에서 쓰던 말 그대로다. */
   sec.appendChild(el('span', 'sec-lab', '판형'));
-  sec.appendChild(segment([['fit', '내용에 맞춤'], ['ratio', '비율을 지정']], c.mode || 'ratio',
+  sec.appendChild(segment([['fit', '내용 맞춤'], ['ratio', '비율 지정']], c.mode || 'ratio',
     v => { c.mode = v; save(); render(); }));
 
   const hint = el('div', 'lab-sub');
@@ -4456,12 +4554,12 @@ function panelCanvas(p) {
     r.oninput = () => { c.width = +r.value; val.textContent = c.width + 'px'; renderCanvas(); };
     r.onchange = () => save();
     body.appendChild(r);
-    const note = el('div', 'lab-sub', '화면이 이 값보다 좁으면 통째로 줄여서 보여 줍니다 — 저장되는 그림은 늘 이 폭 그대로입니다.');
+    const note = el('div', 'lab-sub', '화면이 이 값보다 좁으면 통째로 줄여서 보여 줍니다.');
     note.style.marginTop = '6px';
     body.appendChild(note);
   } else {
     body.appendChild(el('span', 'lab', '캔버스 비율'));
-    const RSUB = { '9:16': '세로', '3:4': '세로형', '1:1': '정사각', '4:3': '가로', '16:9': '와이드' };
+    const RSUB = { '9:16': '스토리', '3:4': '세로', '1:1': '정사각', '4:3': '가로', '16:9': '와이드' };
     body.appendChild(segment(Object.keys(RATIOS).map(k => [k, `${k}<small>${RSUB[k]}</small>`, true]),
       c.ratio, v => { c.ratio = v; save(); render(); }));
   }
@@ -4476,7 +4574,7 @@ function panelCanvas(p) {
   head.appendChild(l);
   /* 열림·닫힘을 그대로 보여주는 꺾쇠. '나누기'/'합치기' 는 눌러 봐야 뭐가 되는지 알 수 있었다. */
   const tg = el('button', 'icb icb-sm');
-  tg.title = c.marginDetail ? '여백 합치기 — 위아래·좌우' : '여백 나누기 — 위·아래·좌·우 따로';
+  tg.title = c.marginDetail ? '여백 합치기 — 위아래·좌우' : '여백 나누기 — 상·하·좌·우 따로';
   tg.innerHTML = `<svg viewBox="0 0 24 24"><path d="${c.marginDetail ? 'M18 15l-6-6-6 6' : 'M6 9l6 6 6-6'}"/></svg>`;
   tg.onclick = () => { c.marginDetail = !c.marginDetail; save(); render(); };
   head.appendChild(tg); mw.appendChild(head);
@@ -4484,10 +4582,10 @@ function panelCanvas(p) {
   if (c.marginDetail) {
     /* 값만 바뀌는 자리다 — 캔버스만 다시 그린다. 패널까지 다시 그리면 누르던 단추가
        사라져 연달아 못 누른다 [stepH]. 스테퍼는 제 숫자를 스스로 고쳐 보여 준다. */
-    box.appendChild(stepH('위', c.mt, 0, 160, 2, v => { c.mt = v; save(); renderCanvas(); }));
-    box.appendChild(stepH('좌측', c.ml, 0, 160, 2, v => { c.ml = v; save(); renderCanvas(); }));
-    box.appendChild(stepH('아래', c.mb, 0, 160, 2, v => { c.mb = v; save(); renderCanvas(); }));
-    box.appendChild(stepH('우측', c.mr, 0, 160, 2, v => { c.mr = v; save(); renderCanvas(); }));
+    box.appendChild(stepH('상', c.mt, 0, 160, 2, v => { c.mt = v; save(); renderCanvas(); }));
+    box.appendChild(stepH('하', c.mb, 0, 160, 2, v => { c.mb = v; save(); renderCanvas(); }));
+    box.appendChild(stepH('좌', c.ml, 0, 160, 2, v => { c.ml = v; save(); renderCanvas(); }));
+    box.appendChild(stepH('우', c.mr, 0, 160, 2, v => { c.mr = v; save(); renderCanvas(); }));
   } else {
     box.appendChild(stepH('위아래', c.mt, 0, 160, 2, v => { c.mt = c.mb = v; save(); renderCanvas(); }));
     box.appendChild(stepH('좌우', c.ml, 0, 160, 2, v => { c.ml = c.mr = v; save(); renderCanvas(); }));
@@ -4669,7 +4767,7 @@ function themeEditor() {
   }
 
   box.appendChild(el('div', 'divider'));
-  box.appendChild(el('div', 'sec-title', '화면머리'));
+  box.appendChild(el('div', 'sec-title', '말머리'));
   const hdBox = el('div', 'stack');
   const hdKind = headKind(t);
   const kindW = el('div');
@@ -4679,7 +4777,7 @@ function themeEditor() {
   if (hdKind !== 'none') {
     const tw = el('div');
     /* 신문의 오른쪽 제호(NEWSPAPER)는 붙박이다 — 적는 칸이 정하는 것은 왼쪽 말이다 */
-    tw.appendChild(el('span', 'lab', hdKind === 'news' ? '왼쪽에 적을 말' : '이름'));
+    tw.appendChild(el('span', 'lab', hdKind === 'news' ? '기사 제목' : '이름'));
     const ti = el('input', 'inp');
     ti.value = t.headerTitle || '';
     ti.placeholder = hdKind === 'news' ? '2026년 8월 13일 목요일' : '김라연';
@@ -4730,12 +4828,12 @@ function themeEditor() {
   box.appendChild(st1);
 
   box.appendChild(el('div', 'divider'));
-  box.appendChild(el('div', 'sec-title', '말풍선 설정'));
+  box.appendChild(el('div', 'sec-title', '대사 설정'));
   const st2 = el('div', 'stack');
   /* 발화자 블록의 겉모습 — 셋 중 하나. 인용·없음은 배경이 없어 꼬리·둥글기가 의미 없다. */
   const bsWrap = el('div');
-  bsWrap.appendChild(el('span', 'lab', '표시 형태'));
-  bsWrap.appendChild(segment([['bubble', '말풍선'], ['quote', '인용'], ['plain', '없음']],
+  bsWrap.appendChild(el('span', 'lab', '형태'));
+  bsWrap.appendChild(segment([['bubble', '말풍선'], ['quote', '인용구'], ['plain', '없음']],
     t.bubbleStyle || 'bubble', v => { t.bubbleStyle = v; render(); }));
   st2.appendChild(bsWrap);
   const isBubble = (t.bubbleStyle || 'bubble') === 'bubble';
@@ -4765,7 +4863,7 @@ function themeEditor() {
 
   }
   /* 연속 발화 묶기 — 이름·이미지·꼬리·간격이 한꺼번에 달라지므로 한 자리에서 켜고 끈다 */
-  st2.appendChild(toggleRow('같은 사람 연속 묶기',
+  st2.appendChild(toggleRow('대사 연속 묶기',
     '',
     t.groupRuns !== false, v => { t.groupRuns = v; render(); }));
   /* 켜고 끄는 값이 아니라 늘 있는 값이라 토글을 빼고 스테퍼만 둔다.
@@ -5905,6 +6003,7 @@ function applySettings(d, picked, mode) {
     if (Array.isArray(d.themes) && d.themes.length) {
       S.themes = merge ? mergeById(S.themes, d.themes) : d.themes;
       S.themes.forEach(ensureThemeFormat);
+      sortThemesByPreset();          /* 들여온 목록도 기본 테마는 정해진 차례에 세운다 */
       /* 더할 때는 보고 있던 테마를 그대로 둔다 — 더했다고 화면이 갈아엎히면 안 된다 */
       if (!merge || !S.themes.some(t => t.id === S.activeThemeId)) {
         S.activeThemeId = d.themes.some(t => t.id === d.activeThemeId) ? d.activeThemeId : S.themes[0].id;
@@ -6399,10 +6498,28 @@ loadPalette();
 initComposer();
 load();
 S.themes.forEach(ensureThemeFormat); /* 기존 전역 서식을 각 테마에 한 번 복사하는 호환 마이그레이션 */
+sortThemesByPreset();                /* 기본 테마의 차례는 코드가 정한다 [PRESET_THEMES] */
 save();
 ensureFontCss(fmt().font);
 syncViewportVars();
 render();
+/* 캐시를 비우며 맡아 둔 «치던 글» 을 돌려준다 [clearCacheAndReload]. render() 뒤라야 한다 —
+   앞에 두면 render 가 작성창을 제 손으로 비우며 함께 지운다. */
+try {
+  const draft = sessionStorage.getItem(DRAFT_KEY);
+  if (draft != null) {
+    sessionStorage.removeItem(DRAFT_KEY);
+    if (draft) $('#ta').value = draft;
+  }
+} catch (_) { }
+/* 새로 받으려고 붙였던 자국은 지운다 — 주소는 다시 깨끗해진다 [clearCacheAndReload] */
+try {
+  const u = new URL(location.href);
+  if (u.searchParams.has(FRESH_Q)) {
+    u.searchParams.delete(FRESH_Q);
+    history.replaceState(null, '', u.pathname + u.search + u.hash);
+  }
+} catch (_) { }
 autoGrow();
 </script>
 </body>

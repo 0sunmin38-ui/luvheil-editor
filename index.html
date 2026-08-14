@@ -186,12 +186,14 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,
    («폭 ÷ 글자 크기 = 17.2» 이 그 비율이다 [MU_W_EM] — 그 값 하나로 전부 따라온다.) */
 /* 한 덩어리로 묶인 «카드» 다 — 배경과 안쪽 여백과 둥근 모서리가 경계를 짓는다.
    여백도 모서리도 em 이라 크기를 움직이면 카드째 함께 커지고 작아진다.
-   아래 여백을 위보다 조금 더 준다 — 재생 단추가 바닥에 붙어 보이지 않게 하는 몫이다. */
+   위아래 여백은 같다. 예전에는 아래를 조금 더 줘서 재생 단추가 바닥에 붙어 보이지 않게
+   했는데, 제목이 본문 크기로 내려앉은 [.mu-title] 뒤로는 위가 눌린 것처럼 보였다 —
+   글자가 작아진 만큼 위쪽 여백이 실제보다 좁게 읽힌다. 아래에 맞춰 위를 늘린다. */
 .blk-music{
   line-height:1.3;max-width:100%;margin-inline:auto;
   background:var(--mu-card,transparent);
   border-radius:.75em;
-  padding:1em 2em 1.15em;
+  padding:1.15em 2em;
 }
 /* 제목·가수는 왼쪽에 쌓이고 하트는 오른쪽 끝 — 하트는 그 «묶음» 의 위아래 가운데에 선다.
    제목 줄에만 눈높이를 맞추면 가수가 붙는 순간 하트만 위로 뜬 것처럼 보인다.
@@ -203,9 +205,12 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,
 .mu-meta{min-width:0;flex:1 1 auto}
 .mu-title,.mu-artist{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* 제목과 가수는 «한 덩어리» 로 읽혀야 한다 — 사이를 벌리면 두 줄이 아니라 두 항목이 된다.
-   블록 전체의 줄 높이(1.3)를 그대로 쓰지 않고 여기서만 좁힌다. */
-.mu-title{font-weight:700;font-size:1.05em;letter-spacing:-.012em;line-height:1.2}
-.mu-artist{font-size:.85em;opacity:.6;margin-top:.05em;line-height:1.2}
+   블록 전체의 줄 높이(1.3)를 그대로 쓰지 않고 여기서만 좁힌다.
+   이 두 줄만은 카드의 em 을 안 탄다 — [musicNode] 가 본문과 같은 크기를 px 로 박아 준다.
+   그래서 «크기» 손잡이로 카드를 줄이거나 키워도 제목·가수의 글자 크기는 그대로다.
+   (카드 · 하트 · 진행바 · 재생 단추는 여태처럼 em 을 따라 함께 커지고 작아진다.) */
+.mu-title{font-weight:700;font-size:var(--mu-title,1.05em);letter-spacing:-.012em;line-height:1.2}
+.mu-artist{font-size:var(--mu-artist,.85em);opacity:.6;margin-top:var(--mu-gap,.05em);line-height:1.2}
 /* 제목을 안 적으면 가수가 첫 줄이 된다 — 그때 위 여백은 없어야 한다 */
 .mu-meta > :first-child{margin-top:0}
 /* 그림마다 viewBox 를 잉크에 «딱» 맞춰 잘라 쓰는데[MU_ICON], svg 는 기본이 overflow:hidden
@@ -2718,9 +2723,16 @@ function headerNode(th) {
    키우면 글자가 폭 대비 작아지고 카드는 납작해진다 — 17.2 일 때 1:2 였고, 27 에서
    1:3.1 이 되어 «가로로 긴 재생 바» 꼴이 된다. */
 const MU_W_EM = 27;
+/* 제목·가수만은 이 em 에서 떼어 놓는다 — 제목은 본문과 같은 크기로, 가수는 그보다 한 뼘
+   작게. 그 «한 뼘» 은 예전 1.05em : .85em 이 주던 차이를 그대로 옮긴 값이다.
+   두 줄 사이는 예전 몫(제목의 .05)에 2px 을 더 준다 — 붙어 읽히던 것을 살짝 떼어 놓되
+   여전히 «두 항목» 이 아니라 «한 덩어리» 로 보이는 만큼만이다. */
+const MU_ARTIST_R = .81, MU_GAP_EM = .05, MU_GAP_PX = 2;
 /* 카드 바탕의 기본값 — 사진 예시(iOS 재생 위젯)처럼 «흰 종이 한 장을 반투명하게 얹은» 꼴이다.
    배경 이미지를 깔았을 때 그 아래가 비쳐야 카드로 읽힌다. */
 const MU_CARD = '#FFFFFF', MU_CARD_A = 55;
+/* 카드 뒤 흐림의 상한 — 테마의 배경 «흐림» 과 같은 폭으로 맞춘다 [fontControls 아래 bg2] */
+const MU_BLUR_MAX = 40;
 /* 겹쳐 깐 층이 아니라 «알파를 가진 색 하나» 로 칠한다 — 층을 얹으면 저장 렌더에서
    합쳐지는 방식이 화면과 어긋날 여지가 남는다 [.hd-imessage 와 같은 이유]. */
 function rgbaOf(hex, a) {
@@ -2738,6 +2750,12 @@ function musicNode(b, th) {
   const w = inner * clamp(b.scale ?? 100, 30, 100) / 100;
   d.style.width = w + 'px';
   d.style.fontSize = (w / MU_W_EM) + 'px';
+  /* 제목·가수의 크기는 폭에서 뽑지 않는다 — 본문 글자 크기를 그대로 쓴다 [.mu-title].
+     음악은 글자 서식을 따로 안 가지므로 [설정 패널] 테마의 본문 크기가 곧 이 크기다. */
+  const tPx = Math.max(1, Number(fmt().size) || 14);
+  d.style.setProperty('--mu-title', tPx + 'px');
+  d.style.setProperty('--mu-artist', +(tPx * MU_ARTIST_R).toFixed(2) + 'px');
+  d.style.setProperty('--mu-gap', +(tPx * MU_GAP_EM + MU_GAP_PX).toFixed(2) + 'px');
   /* 재생 단추와 진행바는 색을 따로 가진다. 안 고르면 둘 다 본문 글자색을 따라간다.
      (tint 는 둘을 한 색으로 묶어 두던 시절의 값이다 — 있으면 그것을 시작값으로 삼는다.) */
   const btnCol = b.btnColor || b.tint || th.fg;
@@ -2748,6 +2766,16 @@ function musicNode(b, th) {
   /* 카드는 «알파를 가진 색 하나» 다 — 아래(캔버스 배경·배경 이미지)가 그만큼 비친다 */
   const cardHex = b.card || MU_CARD, cardA = b.cardOpacity ?? MU_CARD_A;
   d.style.setProperty('--mu-card', rgbaOf(cardHex, cardA));
+  /* 카드 «뒤» 를 흐린다 — 배경 이미지를 깐 캔버스에서 «간유리 한 장» 이 되는 그 흐림이다.
+     제 몸이 아니라 뒤를 흐리는 것이라 backdrop 이다 — filter 를 걸면 글자와 그림이 흐려진다.
+     0 일 때는 아예 안 건다: backdrop-filter 는 값이 0 이어도 쌓임 맥락과 담는 상자를
+     새로 만들어, 안 쓰는 카드의 그리는 방식까지 바꿔 놓는다.
+     (배경이 단색이면 흐릴 것이 없어 아무 일도 안 일어난다 — 테마의 «흐림» 과 같다.) */
+  const blur = clamp(b.cardBlur ?? 0, 0, MU_BLUR_MAX);
+  if (blur > 0) {
+    d.style.backdropFilter = `blur(${blur}px)`;
+    d.style.webkitBackdropFilter = `blur(${blur}px)`;
+  }
   /* 트랙은 «카드 위에 앉은 옅은 막대» 다. 반투명 층을 겹치는 대신 미리 섞은 단색을 쓴다 —
      섞을 바탕은 캔버스가 아니라 «카드가 실제로 보이는 색»(배경 위에 알파만큼 얹힌 것)이다.
      그래야 검은 테마에 흰 카드를 얹어도 트랙이 카드보다 밝아지는 일이 없다. */
@@ -2755,6 +2783,14 @@ function musicNode(b, th) {
 
   const head = el('div', 'mu-head');
   const meta = el('div', 'mu-meta');
+  /* 제목·가수의 «글씨» 는 블록이 따로 고를 수 있다 — 글꼴과 색 둘뿐이다 [buildMusicEditor].
+     안 고르면 본문의 것을 그대로 물려받는다. 크기는 여기 없다 — 본문과 나란한 크기라는
+     것이 이 카드의 약속이라 [.mu-title] 손잡이를 주지 않는다.
+     이 두 줄에만 건다 — 하트·재생 단추·진행바는 제 색을 따로 가진다.
+     (가수는 opacity:.6 이 걸려 있어 [.mu-artist], 같은 색을 줘도 제목보다 옅게 남는다.)
+     (블록이 제 글꼴을 가지면 저장할 때 임베드 목록에도 저절로 오른다 [usedFonts].) */
+  if (b.font) meta.style.fontFamily = fontStack(b.font);
+  if (b.textColor) meta.style.color = b.textColor;
   /* 안 적은 칸은 줄째로 뺀다 — 빈칸에 «노래 제목» 같은 대신 글자를 넣으면 그것이
      그대로 저장본에 찍히고, 빈 줄로 남겨 두면 가수만 적었을 때 위가 뜬다.
      (한쪽만 적어도 된다 — 편집기 안내문이 약속하는 그대로다.) */
@@ -3952,25 +3988,44 @@ function buildMusicEditor(host, block) {
   };
   body.append(mk('노래 제목', 'title', '예) 밤편지'), mk('가수', 'artist', '예) 아이유'));
 
-  /* 색 둘 — 안 건드리면 둘 다 본문 글자색을 그대로 따라간다. 그래서 처음 값은 «지금 나오는
-     그 색» 이다. 한 번 고르면 그 블록의 값이 되어 테마를 바꿔도 안 따라온다. */
   const th = theme();
+  /* 글꼴 — 제목·가수에만 걸린다 [musicNode]. 안 고르면 본문 글꼴 그대로다.
+     크기 손잡이는 일부러 안 둔다: 본문과 나란한 크기가 이 카드의 약속이다 [.mu-title].
+     («고르는 칸이 넓어야 이름이 안 잘린다» — 한 줄을 통째로 준다 [fontControls].) */
+  const fr = el('div');
+  fr.appendChild(el('span', 'lab', '글꼴'));
+  fr.appendChild(fontSelect(block.font || fmt().font,
+    v => { block.font = v; save(); renderCanvas(); }));
+  body.appendChild(fr);
+
+  /* 색 — 안 건드리면 모두 본문 글자색을 그대로 따라간다. 그래서 처음 값은 «지금 나오는
+     그 색» 이다. 한 번 고르면 그 블록의 값이 되어 테마를 바꿔도 안 따라온다.
+     글자와 하트는 «글씨 옆의 것» 이라 한 줄에 세우고, 단추와 진행바는 나란히 두어 둘을
+     견주며 고르게 한다. 카드 배경만 홀로 맨 뒤에 두어 바로 아래 불투명도와 한 덩어리로
+     읽히게 한다 — 그 둘이 실제로 «카드가 보이는 색» 하나를 만든다 [musicNode]. */
   const cg = el('div', 'grid2');
+  cg.appendChild(colorField('글자 색', block.textColor || th.fg,
+    v => { block.textColor = v; save(); renderCanvas(); }));
   cg.appendChild(colorField('하트 색', block.heartColor || th.fg,
     v => { block.heartColor = v; save(); renderCanvas(); }));
-  cg.appendChild(colorField('카드 배경', block.card || MU_CARD,
-    v => { block.card = v; save(); renderCanvas(); }));
-  /* 단추와 진행바는 색을 따로 가진다 — 나란히 두어 둘을 견주며 고르게 한다 */
   cg.appendChild(colorField('재생 단추 색', block.btnColor || block.tint || th.fg,
     v => { block.btnColor = v; save(); renderCanvas(); }));
   cg.appendChild(colorField('진행바 색', block.barColor || block.tint || th.fg,
     v => { block.barColor = v; save(); renderCanvas(); }));
+  cg.appendChild(colorField('카드 배경', block.card || MU_CARD,
+    v => { block.card = v; save(); renderCanvas(); }));
   body.appendChild(cg);
 
   /* 카드가 얼마나 비치는가 — 0 이면 아예 없는 것과 같고, 100 이면 꽉 찬 단색이다.
      배경 이미지를 깔았을 때 이 값이 «유리 한 장» 의 두께가 된다. */
   body.appendChild(sliderH('카드 불투명도', block.cardOpacity ?? MU_CARD_A, 0, 100, 5,
     v => { block.cardOpacity = v; save(); renderCanvas(); }, '%'));
+
+  /* 흐림은 불투명도와 짝이다 — 불투명도가 «유리의 두께» 라면 이것은 «간유리인가» 다.
+     둘 다 카드 뒤에 무엇이 있을 때만 뜻이 있으므로 나란히 둔다 [musicNode].
+     (배경 이미지가 없으면 흐릴 것이 없다 — 값을 올려도 화면은 그대로다.) */
+  body.appendChild(sliderH('카드 흐림', clamp(block.cardBlur ?? 0, 0, MU_BLUR_MAX), 0, MU_BLUR_MAX, 1,
+    v => { block.cardBlur = v; save(); renderCanvas(); }, 'px'));
 
   /* 들은 만큼 — 진행바가 어디까지 차 있는가. 원본이 87% 에서 멈춰 있어 그것을 기본으로 둔다. */
   body.appendChild(sliderH('들은 만큼', block.progress ?? 87, 0, 100, 1,
@@ -5472,8 +5527,32 @@ async function bakeImagesForExport(root) {
    디코드하다 멈추는 쪽이 더 큰 문제였다.
    밀림을 막는 것은 래스터 방식이 아니라 그 앞의 세 가지다 —
    서브셋 강제 로드 · 줄바꿈/상자 고정 · font-display:block. */
+/* ── 확대 없이 그리기 ──────────────────────────────────────────
+   html-to-image 는 논리 크기(w×h)로 SVG 를 세운 다음 그것을 캔버스에 늘려 그린다 —
+   drawImage(svg, 0, 0, w*scale, h*scale). 이 «늘리기» 를 브라우저가 어떻게 처리하는지가
+   엔진마다 다르다. 데스크톱 크롬·사파리는 목적지 해상도에서 SVG 를 다시 래스터화해
+   글자가 또렷하지만, 안드로이드 크롬은 SVG 를 논리 크기로 먼저 비트맵으로 굳힌 뒤
+   늘리는 쪽으로 떨어질 수 있다 — 파일은 똑같이 1440px 인데 글자만 뭉개져 나온다.
+   («갤럭시에서만 화질이 낮다» 는 이야기가 여기서 나온다.)
+   그래서 늘리는 단계 자체를 없앤다. SVG 를 처음부터 최종 크기로 세우고(width·height),
+   내용은 CSS transform 으로 키운다 — transform 은 배치를 바꾸지 않으므로 줄바꿈도
+   말풍선 폭도 그대로다. pixelRatio 는 1 이 되어 더 늘릴 일이 없다. */
 async function renderExact(hti, node, w, h, scale, fontCss, bg) {
-  const base = {
+  const W = Math.max(1, Math.round(w * scale)), H = Math.max(1, Math.round(h * scale));
+  /* style 은 라이브러리가 제 복제본에 맨 마지막으로 대입한다 — 그 앞에서 width·height(W·H)
+     로 덮인 상자 크기를 여기서 논리 크기로 되돌려야 transform 이 정확히 W×H 를 채운다. */
+  const scaled = {
+    width: W, height: H, pixelRatio: 1, cacheBust: false, preferredFontFormat: 'woff2',
+    backgroundColor: bg,
+    style: {
+      width: w + 'px', height: h + 'px',
+      transform: `scale(${scale})`, transformOrigin: 'top left',
+      margin: '0', boxShadow: 'none'
+    }
+  };
+  /* 늘리지 않고 그리는 길이 어느 브라우저에서 막히더라도 저장 자체는 되어야 한다 —
+     예전 방식(논리 크기 SVG + pixelRatio 로 확대)을 물러설 자리로 남겨 둔다. */
+  const legacy = {
     width: w, height: h, pixelRatio: scale, cacheBust: false, preferredFontFormat: 'woff2',
     backgroundColor: bg,
     style: {
@@ -5481,9 +5560,12 @@ async function renderExact(hti, node, w, h, scale, fontCss, bg) {
       width: w + 'px', height: h + 'px'
     }
   };
-  /* 글꼴을 다 심었으면 그걸로, 못 심었으면 skipFonts 로. 중간(외부 url 잔존)은 두지 않는다. */
-  const variants = fontCss ? [{ ...base, fontEmbedCSS: fontCss }, { ...base, skipFonts: true }]
-                           : [{ ...base, skipFonts: true }];
+  /* 글꼴을 다 심었으면 그걸로, 못 심었으면 skipFonts 로. 중간(외부 url 잔존)은 두지 않는다.
+     글꼴이 먼저다 — 두 그리기 방식을 다 해 보고 나서야 글꼴을 포기한다. */
+  const variants = fontCss
+    ? [{ ...scaled, fontEmbedCSS: fontCss }, { ...legacy, fontEmbedCSS: fontCss },
+       { ...scaled, skipFonts: true }, { ...legacy, skipFonts: true }]
+    : [{ ...scaled, skipFonts: true }, { ...legacy, skipFonts: true }];
   let last;
   for (const opt of variants) { try { return await hti.toPng(node, opt); } catch (e) { last = e; } }
   throw last || new Error('저장 실패');

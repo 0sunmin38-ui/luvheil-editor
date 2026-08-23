@@ -5259,13 +5259,36 @@ function ensureFontCss(name) {
 }
 let _hti = null, _fontCSS = null;
 
+/* html-to-image 1.11.11 은 복제본의 글자 크기를 «floor(크기) − 0.1px» 로 깎는다.
+   크롬의 옛 반올림 버그를 피하려던 코드인데, 정수가 아닌 크기에서 손해가 크다 —
+   12.5px 이 11.9px 이 되어 4.8% 작아진다. 상자 크기는 화면 실측값 그대로 못 박히므로
+   글자만 쪼그라들고, 그 차이가 «저장본이 화면보다 여백이 넓다» 로 보인다.
+   줄바꿈은 우리가 <br> 로 따로 굳히므로[softBreaks] 그 보정은 필요 없다 — 받아 온
+   소스에서 그 한 줄만 무력화해 쓴다. 패턴을 못 찾거나 못 받으면 원본을 그대로 쓴다. */
+const HTI_FONT_HACK = /"font-size"===\w+&&\w+\.endsWith\("px"\)&&\(/;
 function loadHTI() {
   if (_hti) return _hti;
-  _hti = new Promise((res, rej) => {
-    const s = document.createElement('script');
-    s.src = HTI; s.onload = () => res(window.htmlToImage); s.onerror = rej;
-    document.head.appendChild(s);
-  });
+  _hti = (async () => {
+    let url = HTI, blob = null;
+    try {
+      const src = await (await fetch(HTI, { cache: 'force-cache' })).text();
+      const fixed = src.replace(HTI_FONT_HACK, '!1&&(');
+      if (fixed !== src) {
+        blob = URL.createObjectURL(new Blob([fixed], { type: 'text/javascript' }));
+        url = blob;
+      } else console.warn('html-to-image 글자 크기 보정 지점을 못 찾았습니다 — 원본으로 씁니다');
+    } catch (e) {
+      console.warn('html-to-image 를 직접 받지 못했습니다 — 원본으로 씁니다', e);
+    }
+    try {
+      await new Promise((res, rej) => {
+        const s = document.createElement('script');
+        s.src = url; s.onload = res; s.onerror = rej;
+        document.head.appendChild(s);
+      });
+    } finally { if (blob) URL.revokeObjectURL(blob); }
+    return window.htmlToImage;
+  })();
   return _hti;
 }
 
@@ -5394,43 +5417,72 @@ function nodeAt(root, path) {
   for (const i of path || []) { if (!cur || !cur.childNodes[i]) return null; cur = cur.childNodes[i]; }
   return cur;
 }
-/* 글자 하나하나의 세로 위치를 훑어 줄이 바뀐 지점을 찾는다. <br> 로 이미 끊긴 자리는 뺀다. */
+/* 줄이 바뀐 지점을 찾는다. <br>·\n 으로 이미 끊긴 자리는 뺀다.
+   [주의] 글자마다 Range 를 잡아 y 를 읽는 방법은 쓰면 안 된다. 웹킷은 소프트 줄바꿈 «직후»
+   첫 글자의 rect 를 앞 줄 자리로 돌려준다(affinity). 그래서 y 가 점프한 글자를 줄 시작으로
+   삼으면 끊긴 자리가 한 글자씩 늦게 잡히고, 그 어긋남이 줄마다 쌓인다 — 저장본에서
+   «바뀝니다» 가 «바 / 뀝니다» 로 갈리던 원인이 이것이었다.
+   대신 «앞에서부터 k 글자를 덮는 Range 가 몇 줄에 걸치는가» 를 본다. 이 값은 affinity 와
+   무관하고 k 에 대해 단조 증가라, 줄마다 이분 탐색 한 번이면 첫 글자를 정확히 집는다. */
 function softBreaks(root) {
-  const out = [], range = document.createRange();
-  const lh = parseFloat(getComputedStyle(root).lineHeight) || 16;
-  let lastY = null, hard = false;
+  /* 글자를 (텍스트노드, 오프셋) 으로 펴 둔다. hard = 이 글자 «앞» 이 이미 끊겨 있다 —
+     그 자리에 <br> 을 또 박으면 빈 줄이 하나 더 생긴다. */
+  const pos = [];
+  let hard = true;                     /* 첫 글자 앞은 끊긴 것으로 친다 */
+  const isBlock = el => /^(block|flex|grid|table|list-item)$/.test(getComputedStyle(el).display);
   const walk = parent => {
     for (const ch of parent.childNodes) {
       if (ch.nodeType === 3) {
         const v = ch.nodeValue || '';
         for (let i = 0; i < v.length; i++) {
-          /* 말풍선·글 블록은 white-space:pre-wrap 이라 글자로 들어온 줄바꿈이 그대로 살아 있다.
-             이건 이미 끊긴 줄이므로 <br> 을 또 박으면 안 된다 — <br> 과 똑같이 취급한다.
-             (그냥 공백으로 넘기면 다음 글자가 '줄이 바뀐 지점' 으로 잡혀 빈 줄이 하나 더 생겼다) */
-          if (v[i] === '\n') { hard = true; lastY = null; continue; }
-          if (/\s/.test(v[i])) continue;
-          try {
-            range.setStart(ch, i); range.setEnd(ch, i + 1);
-            const rect = [...range.getClientRects()].find(r => r.height > 0);
-            if (!rect) continue;
-            const y = (rect.top + rect.bottom) / 2;
-            if (lastY !== null && Math.abs(y - lastY) > Math.max(2, lh * .42) && !hard) {
-              const path = nodePath(ch, root);
-              if (path) out.push({ path, offset: i });
-            }
-            lastY = y; hard = false;
-          } catch (_) { }
+          /* 말풍선·글 블록은 white-space:pre-wrap 이라 글자로 들어온 줄바꿈이 살아 있다 */
+          if (v[i] === '\n') { hard = true; continue; }
+          pos.push({ node: ch, off: i, hard });
+          hard = false;
         }
         continue;
       }
       if (ch.nodeType !== 1) continue;
-      if (ch.tagName === 'BR') { hard = true; lastY = null; continue; }
-      const disp = getComputedStyle(ch).display;
-      if (/^(block|flex|grid|table|list-item)$/.test(disp)) { hard = true; lastY = null; }
+      if (ch.tagName === 'BR') { hard = true; continue; }
+      if (ch.tagName === 'STYLE' || ch.tagName === 'SCRIPT') continue;
+      const blk = isBlock(ch);
+      if (blk) hard = true;
       walk(ch);
+      if (blk) hard = true;
     }
   };
   walk(root);
+  if (pos.length < 2) return [];
+
+  const range = document.createRange();
+  /* 0..k 번째 글자를 덮는 Range 가 걸친 줄 수. 줄상자는 인라인 조각마다 따로 오므로
+     개수가 아니라 «서로 다른 top» 을 센다. */
+  const linesTo = k => {
+    try {
+      range.setStart(pos[0].node, pos[0].off);
+      range.setEnd(pos[k].node, pos[k].off + 1);
+    } catch (_) { return 1; }
+    const tops = new Set();
+    for (const r of range.getClientRects()) {
+      if (r.height > 0) tops.add(Math.round(r.top));
+    }
+    return tops.size || 1;
+  };
+
+  const total = linesTo(pos.length - 1);
+  const out = [];
+  for (let line = 2; line <= total; line++) {
+    /* 그 줄의 첫 글자 = linesTo 가 line 이상이 되는 가장 앞 글자 */
+    let lo = 0, hi = pos.length - 1;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (linesTo(mid) >= line) hi = mid; else lo = mid + 1;
+    }
+    const p = pos[lo];
+    if (p.hard) continue;              /* 이미 끊긴 자리다 */
+    const path = nodePath(p.node, root);
+    if (path) out.push({ path, offset: p.off });
+  }
   return out;
 }
 function insertBreaks(root, points) {

@@ -202,7 +202,9 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,
   line-height:1.3;max-width:100%;margin-inline:auto;
   background:var(--mu-card,transparent);
   border-radius:.75em;
-  padding:1.15em 2em;
+  /* 좌우는 2em 이었다 — 위아래(1.15em)의 두 배 가까이라 카드가 «양옆이 눌린» 꼴로 보였다.
+     1.4em 이면 위아래와 눈에 비슷한 몫이 되면서, 제목 줄이 반 칸 더 들어가는 여지[.mu-head]도 남는다. */
+  padding:1.15em 1.4em;
 }
 /* 제목·가수는 왼쪽에 쌓이고 하트는 오른쪽 끝 — 하트는 그 «묶음» 의 위아래 가운데에 선다.
    제목 줄에만 눈높이를 맞추면 가수가 붙는 순간 하트만 위로 뜬 것처럼 보인다.
@@ -707,10 +709,50 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,
   .sheet.is-compact .composer-hint,.sheet.is-compact .opt-row,
   .sheet.is-compact #formatWrap,.sheet.is-compact .sheet-body{display:none!important}
   .sheet.is-compact .sheet-head{padding-bottom:10px}
-  /* 손잡이(22px)가 시트 윗 여백 노릇도 하고 있었다 — 손잡이는 걷었지만 여백은 남긴다.
-     안 남기면 둥근 윗변에 [+] 줄이 바로 붙어 시트가 «잘린 것» 처럼 보인다.
-     넓은 화면에는 원래 손잡이가 없었으므로(그때도 여백이 없었다) 여기서만 준다. */
-  .sheet-head{padding-top:16px}
+  /* 손잡이가 시트 윗 여백 노릇도 한다 — 한동안 손잡이를 걷어 두고 이 자리에 16px 만
+     남겨 뒀었다(안 남기면 둥근 윗변에 [+] 줄이 바로 붙어 «잘린 것» 처럼 보인다).
+     손잡이가 돌아왔으니 그 몫은 손잡이가 도로 맡고, 여기는 숨 쉴 만큼만 남긴다.
+     넓은 화면에는 손잡이가 없으므로(끌 데가 없다) 그쪽 값은 따로 준다 [min-width:900px]. */
+  .sheet-head{padding-top:4px}
+  /* ── 손잡이 ─────────────────────────────────────────────────
+     끌면 시트 높이가 따라오고, 손을 떼면 정해 둔 지점에 붙는다 [SNAPS · setSnap].
+     높이는 --snap-h 한 곳에만 적힌다 — 끄는 동안은 px, 붙고 나면 «화면의 몇 할» 이다.
+     이 규칙은 단계별 높이(.is-format/.is-tools/.is-full = 60dvh)를 이겨야 하므로
+     클래스를 더 많이 물고, 접힘(.is-compact)에는 안 걸린다 — 접힘은 제 규칙이 있다. */
+  /* 기본 규칙(.sheet-grab{display:none})이 이 블록보다 «뒤» 에 적혀 있다 — 같은 세기면
+     뒤가 이긴다. 클래스를 하나 더 물어 여기서 이긴다. */
+  .sheet .sheet-grab{
+    display:block;order:0;flex:0 0 auto;
+    padding:9px 0 3px;touch-action:none;cursor:grab;-webkit-user-select:none;user-select:none;
+  }
+  .sheet-grab i{
+    display:block;width:38px;height:4px;margin:0 auto;border-radius:99px;
+    background:var(--border-strong);opacity:.45;
+  }
+  .sheet-grab:active i{opacity:.7}
+  .sheet.is-dragging .sheet-grab{cursor:grabbing}
+  .sheet.has-snap:not(.is-compact){height:var(--snap-h);max-height:var(--snap-h)}
+  /* 끄는 동안은 손끝을 그대로 따라와야 한다 — 붙는 애니메이션은 손을 뗀 뒤의 몫이다 */
+  .sheet.is-dragging{transition:none}
+  /* 시트를 키운 만큼 «글 쓰는 칸» 도 함께 커진다. 안 그러면 늘어난 자리를 서식 도구만
+     가져가고, 그냥 글을 쓰는 중(서식도 도구도 없는 단계)에는 빈 자리만 남는다.
+     빼는 몫은 손잡이 + 여백 + 힌트 줄 + 확정 단추가 늘 차지하는 만큼이다. */
+  .sheet.has-snap:not(.is-compact) #ta{max-height:calc(var(--snap-h) - 168px)}
+  /* 키보드가 열린 «일반 글자 블록 편집» 은 뒤에서 #ta 를 60dvh 로 다시 묶는다
+     [.sheet.is-normal-writing .composer-input:focus-within #ta]. 손잡이로 90% 를 골라 놓고
+     키보드를 열면 그 규칙이 이겨 작성창만 도로 작아졌다 — 클래스를 더 물어 여기서 이긴다. */
+  .sheet.has-snap:not(.is-compact) .composer-input:focus-within #ta{
+    max-height:calc(var(--snap-h) - 168px)
+  }
+  /* …그런데 그 여백이 도구 단계에서만 조용히 사라지고 있었다.
+     .dock 은 «줄어들 수 있는» 상자다 [flex:0 1 auto + min-height:0] — 서식 단계에서
+     #formatWrap 을 그 안에서 굴리려고 그렇게 뒀다. 그 바람에 시트가 max-height[60dvh]에
+     걸리면 flex 가 초과분을 .dock 부터 눌러 버린다. 도구 내용이 길수록 더 눌린다 —
+     캐릭터 탭(522px)에서는 24px 가 22px 로 남지만 테마 탭(2340px)에서는 5px 까지 찌그러졌다.
+     .sheet-head 자체는 flex:0 0 auto 라 24px 를 지키므로, 눌린 .dock 밖으로 넘쳐 탭 줄이
+     시트의 둥근 윗변 위에 올라탔다 — 위 여백이 없어진 것처럼 보인 것이 이것이다.
+     도구 단계의 .dock 안에는 [+] 줄[높이 0]과 이 여백밖에 없어 굴릴 것도, 누를 것도 없다. */
+  .sheet.is-tools .dock{flex:0 0 auto}
   /* 확정 단추는 접힌 상태에서도 늘 보인다. 예전에는 «작성창에 손이 가 있을 때» 만 폈는데,
      처음 화면에 올릴 단추가 안 보여 «어디에 올리지» 하고 작성창을 먼저 눌러 봐야 했다.
      비어 있으면 눌리지 않는 채로(disabled) 서 있어, 자리는 늘 여기 하나다 [renderFoot]. */
@@ -763,6 +805,9 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,
 /* 작성 묶음(독) — NAV → 콘텐츠 → 확정 단추. 이 순서는 어디서도 안 바뀐다.
    가운데 콘텐츠만 늘었다 줄었다 하고, 넘치면 자기 안에서 스크롤한다.
    위아래 칸이 제자리에 있어야 무엇을 하든 손이 같은 데로 간다. */
+/* 손잡이는 «아래에서 올라오는 시트» 의 물건이다 — 넓은 화면에서 시트는 옆에 선 기둥이라
+   위아래로 끌 것이 없다. 좁은 화면에서만 꺼내 쓴다 [max-width:899.98px]. */
+.sheet-grab{display:none}
 .dock{order:1;display:flex;flex-direction:column;min-height:0}
 .sheet-head{flex:0 0 auto;padding-bottom:8px}
 #formatWrap{flex:0 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain}
@@ -1038,7 +1083,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,
 /* 라벨을 컨트롤 «위» 에 얹는 묶음. 캐릭터 칩처럼 폭을 많이 쓰는 컨트롤은 라벨을 옆에
    두면 한 줄에 둘을 못 앉힌다 — 위로 올리면 «캐릭터 | 위치» 를 나란히 놓을 수 있다. */
 .tool-grp.stack{flex-direction:column;align-items:flex-start;gap:7px}
-/* 이 줄의 단추는 글자가 접히면 안 된다 — «← 뒤/로» 처럼 두 줄이 되어 줄 높이가 튄다 */
+/* 이 줄의 단추는 글자가 접히면 안 된다 — «복/제» 처럼 두 줄이 되어 줄 높이가 튄다 */
 .tool-line .tool-grp > .btn{white-space:nowrap;flex:0 0 auto}
 /* 정렬 4개 + 크기 3개를 한 줄에 담는 줄. 시트는 넓은 화면에서도 440px 고정이라
    기본 40px 단추로는 아슬아슬해 접힌다 — 이 줄에서만 단추와 간격을 조금 줄인다. */
@@ -1046,11 +1091,13 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,
 .tool-line.compact .tool-grp{gap:6px}
 .tool-line.compact .icb{width:34px;height:34px;flex-basis:34px}
 .tool-line.compact .icb svg{width:17px;height:17px}
-/* 글자 크기 — 정렬과 같은 동그란 버튼으로 맞춘다. 아이콘 대신 A 를 세 크기로 보인다. */
-.icb .szA{font-weight:600;line-height:1}
-.icb .szA.s{font-size:11px}
-.icb .szA.m{font-size:14px}
-.icb .szA.l{font-size:17px}
+/* 글자 크기 — 정렬과 같은 동그란 버튼으로 맞춘다.
+   예전에는 같은 «A» 를 11 · 14 · 17px 세 크기로만 보였는데, 동그라미 안에서 그 몇 px 차이는
+   눈에 안 잡혔다. 좁은 화면은 단추가 «누르면 다음» 하나뿐이라 견줄 상대조차 없어서 더 그랬다.
+   크기 대신 «글자의 꼴» 을 가른다 — 작은 a · 큰 A · 굵은 A. 셋 다 같은 15px 이라 크기로
+   견주지 않고 모양 하나로 갈린다. */
+.icb .szA{font-size:15px;line-height:1;font-weight:500}
+.icb .szA.l{font-weight:800}
 .tool-sep{width:1px;align-self:stretch;background:var(--border);margin:0 2px}
 
 .av-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
@@ -1082,7 +1129,14 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,
   display:grid;place-items:center;min-height:56px}
 .theme-card.is-add svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round}
 
-.tabs{display:flex;align-items:center;gap:6px;padding:2px var(--pad) 12px;border-bottom:1px solid var(--border)}
+/* 탭 줄은 굴러 나가지 않는다 — 설정은 길어서 몇 번만 밀어도 «지금 어느 탭인가» 와
+   «톱니로 닫기» 가 화면 밖으로 사라졌다. 도구 칸[.sheet-body]이 굴리는 상자이므로
+   그 맨 위에 붙여 둔다. 배경을 깔아 줘야 밑으로 지나가는 글이 비쳐 보이지 않는다
+   — 원래는 시트 바탕을 그대로 물려받아 «배경 없음» 이었다. */
+.tabs{
+  position:sticky;top:0;z-index:6;background:var(--surface);
+  display:flex;align-items:center;gap:6px;padding:2px var(--pad) 12px;border-bottom:1px solid var(--border);
+}
 
 .tab{flex:1;height:var(--ctl-sm);border-radius:var(--r-ctl);font-size:11.5px;color:var(--text-muted);border:1px solid transparent;white-space:nowrap;min-width:0}
 .tab.is-on{background:var(--green-050);border-color:var(--green-500);color:var(--green-700);font-weight:600}
@@ -1262,18 +1316,37 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,
      좁을 때는 시트 한 칸을 도구·서식·작성창이 번갈아 쓰지만, 여기서는 세로로 자리가 남는다.
      한꺼번에 세워 두고 무엇을 고르든 화면이 갈아엎히지 않게 한다.
 
-       도구            ← 위 절반
-       ────
        삽입 메뉴 (NAV) ← 선택 삭제 중에는 이 자리에 그 막대가 선다
-       작성창          ← 손이 가장 자주 가는 자리라 아래 묶음의 맨 위
+       작성창          ← 손이 가장 자주 가는 자리라 맨 위다
        블록 서식       ← 블록을 골랐을 때만. 그냥 쓰는 중에는 안 뜬다
+       ────
+       도구            ← 아래
 
      [+] 는 삽입 막대를 여닫는 단추였으니 늘 열려 있는 여기서는 뺀다. */
-  /* 위 절반은 도구, 아래 절반은 작성 묶음 — 안쪽에 무엇이 들었든 이 비율은 그대로다.
-     비율을 내용에 맡기면 서식이 접히는 순간(그냥 쓰는 중 · HTML 을 적을 때) 도구가 위를
-     다 먹고 작성창이 바닥으로 밀려 내려간다. 반씩 못 박고 넘치는 쪽만 각자 스크롤한다. */
-  .sheet-body{order:1;flex:0 0 50%;min-height:0;overflow-y:auto}
-  .dock{order:2;flex:1 1 50%;min-height:0;border-top:2px solid var(--border-strong)}
+  /* 처음에는 «도구가 위, 작성 묶음이 아래» 를 반씩 못 박아 뒀다. 그랬더니 어느 쪽을 보든
+     늘 절반이라, 긴 설정도 긴 서식도 그 절반 안에서만 굴러야 했다.
+     이제 둘을 뒤집고[order] 여닫는다 — 손이 가장 자주 가는 작성창이 맨 위에 서고,
+     도구는 그 아래에 밀려 있다가 누르면 열린다 [setDeskPane].
+     열린 쪽이 80%, 밀린 쪽이 20% 다. 처음은 작성창이 열린 쪽이다. */
+  .dock{
+    order:1;flex:1 1 80%;min-height:0;
+    transition:flex-basis .22s cubic-bezier(.22,.61,.36,1)
+  }
+  /* 가르는 선은 «아래 칸의 윗변» 이다 — 위아래를 뒤집었으니 선도 따라 옮겨 온다 */
+  .sheet-body{
+    order:2;flex:0 0 20%;min-height:60px;overflow-y:auto;
+    border-top:2px solid var(--border-strong);
+    transition:flex-basis .22s cubic-bezier(.22,.61,.36,1)
+  }
+  /* 밀려 있는 도구 칸은 탭 줄만 남는다 — 그 줄이 시트 맨 아래에 딱 붙어 보이지 않게,
+     가르는 선과 탭 사이에 한 뼘 준다 [.tabs 의 위 여백은 2px 뿐이다]. */
+  .sheet-body .tabs{padding-top:10px}
+  .sheet.pane-tools .sheet-body{flex-basis:80%}
+  /* 밀린 작성 묶음은 제 안에서 굴린다 — 창이 낮으면 20% 가 «작성창 + 확정 단추» 보다
+     작아지는데, .sheet-head 와 .sheet-foot 은 안 줄어드는 칸이라[flex:0 0 auto]
+     그대로 두면 시트 밖으로 삐져나간다 [.sheet.is-tools .dock 과 같은 뿌리]. */
+  .sheet.pane-tools .dock{flex-basis:20%;overflow-y:auto}
+  @media (prefers-reduced-motion:reduce){ .sheet-body,.dock{transition:none} }
   .sheet-head{padding-top:12px}
   /* 콘텐츠만 늘었다 줄었다 하고, 확정 단추는 그 바로 뒤에 붙는다(바닥 고정 아님) */
   #formatWrap{flex:0 1 auto;min-height:0;max-height:none;
@@ -1319,11 +1392,14 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,
   }
   /* 칸 사이 선은 배경색을 깔아 만들지 않는다 — 한쪽이 비면 그 배경이 그대로 회색 덩어리로 보인다.
      테두리로 그으면 비어 있어도 흰 바탕이 이어진다. */
-  .sheet-body{border-left:1px solid var(--border)}
-  .dock{grid-column:1;grid-row:1;border-top:0;min-height:0}
+  .dock{grid-column:1;grid-row:1;min-height:0}
   .sheet-head{padding-top:14px}
   #formatWrap{overflow-y:auto}
-  .sheet-body{grid-column:2;grid-row:1;padding-top:14px;border-left:1px solid var(--border)}
+  /* 윗 여백은 굴리는 상자가 아니라 탭 줄이 가진다 — 상자에 주면 그 14px 이 굴림판 안쪽이라
+     못 박힌 탭 줄[.tabs position:sticky] 위로 글이 지나가 보인다. */
+  /* 여기서는 좌우로 갈라지므로 «가르는 선» 도 위가 아니라 옆이다 [한 기둥 배치의 border-top] */
+  .sheet-body{grid-column:2;grid-row:1;border-top:0;border-left:1px solid var(--border)}
+  .sheet-body .tabs{padding-top:16px}
   .savesheet{z-index:100}
 }
 
@@ -1383,6 +1459,11 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,
   </div>
 
   <section class="sheet" id="sheet" aria-label="편집 시트">
+
+    <!-- 손잡이 — 끌어서 시트 높이를 바꾼다. 손을 떼면 정해 둔 지점으로 붙는다 [SNAPS].
+         짧게 누르면 접힘↔직전 크기. 넓은 화면에는 안 나온다(시트가 옆 기둥이라 끌 데가 없다). -->
+    <div class="sheet-grab" id="sheetGrab" role="separator" aria-label="시트 높이 조절"
+         title="끌어서 높이 조절 · 누르면 접기"><i></i></div>
 
     <!-- ── 작성 묶음(독) ────────────────────────────────────────────
          언제나 같은 세 칸이다. 무엇을 하든 자리는 안 바뀌고 가운데 내용만 갈린다.
@@ -1689,6 +1770,13 @@ const S = {
   ui: {
     stage: 'composer', tool: 'character', insertMode: null, navOpen: false,
     panel: 'compact', previewZoom: 1,
+    /* 데스크톱 한 기둥 배치에서 «지금 열려 있는 칸» [setDeskPane] — 처음은 작성창이다 */
+    deskPane: 'dock',
+    /* 손잡이로 정한 시트 높이 [SNAPS · setSnap]. null 은 «원본 크기» — 단계마다 제 높이를
+       그대로 쓴다(작성 중이면 한 줄, 서식이 떠 있으면 그만큼). snapLast 는 직전 크기다. */
+    snap: null, snapLast: 60,
+    /* 작성창을 눌러 «자동으로» 올려 둔 상태 [autoSnapForWriting] — 되돌릴 자리를 안고 있다 */
+    snapAuto: null,
     selectedBlockId: null, editingCharacterId: null, charDraft: null,
     editingThemeId: null, themeDraft: null,
     /* 새로 꽂을 사진·서명을 고르는 중인가 — 그때는 서식 패널이 그 편집기를 편다 */
@@ -2101,6 +2189,17 @@ function fragmentHasFormat(root, spec, color) {
     return !!e && (!color || spec.read(e) === hexOf(color));
   });
 }
+/* 지금 고른 조각에 이 서식이 걸려 있는가. applyRich 가 «벗길지 씌울지» 를 가릴 때 보는
+   두 경우를 그대로 본다 — 선택이 그 태그 «안» 에 통째로 들어 있거나[upIn], 떼어 낸 조각의
+   글자마다 걸려 있거나[fragmentHasFormat]. 둘 중 하나만 봐서는 늘 한쪽을 놓친다. */
+function rangeHasRich(kind) {
+  const spec = RICH[kind]; if (!spec) return false;
+  const r = liveRange(); if (!r) return false;
+  if (upIn(r.commonAncestorContainer, spec.is)) return true;
+  try { return fragmentHasFormat(r.cloneContents(), spec, null); } catch (_) { return false; }
+}
+/* 고른 조각의 «크기 단계» [SIZE_LV_UI 와 같은 눈금] */
+const richSizeLv = () => rangeHasRich('szUp') ? 1 : (rangeHasRich('szDn') ? -1 : 0);
 /* 선택이 같은 서식 «안» 에 통째로 들어 있는 경우.
    떼어 낸 조각만 보면 부모가 조각 밖에 있어 서식이 걸린 줄 모른다 — 그래서 굵게를 다시
    눌러도 벗겨지는 대신 한 겹 더 씌워지고, 되읽으면 ****글**** 처럼 빈 마커가 남았다.
@@ -2522,7 +2621,30 @@ function syncViewportVars() {
   $('#sheet').classList.toggle('is-normal-writing', !!textBlockInput);
   /* 접힌 상태에서 '캔버스에 올리기' 를 펴는 열쇠 — 손을 떼면 도로 접힌다 */
   $('#sheet').classList.toggle('is-writing', writing);
+  autoSnapForWriting(writing);
   requestAnimationFrame(measureSheet);
+}
+
+/* 작성창을 누르면 시트를 가장 크게 펴고, 키보드가 내려가면 있던 자리로 되돌린다 [setSnap].
+   글을 적는 동안에는 «적는 칸» 이 화면의 대부분이어야 한다 — 키보드가 아래 절반을 먹는데
+   시트까지 한 줄로 접혀 있으면 방금 친 글이 두어 줄밖에 안 보인다.
+   손잡이를 직접 끌거나 누른 경우에는 이 되돌리기가 끼어들지 않는다 — 사람이 정한 자리가
+   먼저다 [initSheetGrab 이 snapAuto 를 놓는다].
+   자동으로 올린 90% 는 «직전 크기» 로 치지 않는다 — 탭 한 번으로 돌아갈 자리는 사람이
+   손잡이로 골랐던 그 크기여야 한다. 그래서 snapLast 를 안팎으로 그대로 지켜 준다. */
+function autoSnapForWriting(writing) {
+  if (isWide()) return;
+  if (writing) {
+    if (S.ui.snapAuto) return;
+    S.ui.snapAuto = { back: S.ui.snap, last: S.ui.snapLast };
+    setSnap(90);
+    S.ui.snapLast = S.ui.snapAuto.last;
+  } else if (S.ui.snapAuto) {
+    const a = S.ui.snapAuto;
+    S.ui.snapAuto = null;
+    setSnap(a.back);
+    S.ui.snapLast = a.last;
+  }
 }
 
 /* ── 캔버스 렌더 ─────────────────────────────────────────── */
@@ -2879,6 +3001,9 @@ const NEWS_MARK = 'NEWSPAPER';
    안 맞아 보이던 정체가 이것이다. 높이만 정하고 폭은 viewBox 비율이 정하게 두면
    양쪽 잉크가 같은 자리에서 시작해 여백에 나란히 붙는다.
    (테두리 굵기의 절반이 획 밖으로 나가므로 viewBox 는 그 몫까지 넣어 잡는다.) */
+/* 메시지1 말머리 띠의 불투명도 [headerNode]. 배경 이미지를 깔았을 때 이 몫만큼 비친다.
+   1 이면 예전처럼 완전히 가리고, 낮출수록 이미지가 더 드러나되 이름이 읽기 어려워진다. */
+const HD_BAND_A = .62;
 const HD_ICON = {
   back: ['6.8 3.8 9.4 16.4', '<path d="M15 5l-7 7 7 7"/>'],
   video: ['1.3 5.3 20.4 13.4',
@@ -2996,10 +3121,18 @@ function headerNode(th) {
   }
 
   if (kind === 'imessage') {
-    /* 겹쳐 까는 층이 아니라 그냥 «색» 이다 — 배경과 글자색에서 미리 섞어 단색으로 박는다.
-       어느 테마에서 켜도 배경보다 한 톤만 짙은 띠가 되고, 저장본도 화면과 똑같이 나온다. */
-    head.style.setProperty('--hd-band', mixHex(th.bg, th.fg, .055));
-    head.style.setProperty('--hd-line', mixHex(th.bg, th.fg, .12));
+    /* 띠는 «반투명한 색 한 겹» 이다. 예전에는 배경색과 글자색을 미리 섞은 단색을 박았는데,
+       그러면 배경 이미지를 깐 캔버스에서 말머리 자리만 이미지가 통째로 가려졌다.
+       [핵심] 알파를 씌우되 «단색이던 시절의 진하기» 는 그대로 지킨다 — 섞는 비율을 알파로
+       나눠 두면(r / A) 불투명한 배경 위에 얹혔을 때의 합성 결과가 예전 값과 같아진다.
+         rgba(mix(bg,fg,r/A), A) 를 bg 위에 얹으면 = mix(bg, fg, r)
+       그래서 단색 배경에서는 예전과 똑같이 보이고, 이미지를 깔았을 때만 비친다.
+       (겹쳐 «까는 층» 은 여전히 안 쓴다 — 층을 하나 더 얹으면 저장 렌더에서 합쳐지는
+        방식이 화면과 어긋날 여지가 남는다. 상자 자신의 background 한 겹뿐이다.) */
+    const A = HD_BAND_A;
+    head.style.setProperty('--hd-band', rgbaOf(mixHex(th.bg, th.fg, .055 / A), A * 100));
+    head.style.setProperty('--hd-line', rgbaOf(mixHex(th.bg, th.fg, .12 / A), A * 100));
+    /* 빈 프로필 동그라미는 «그 자리에 놓인 것» 이라 비치지 않는다 — 띠와 달리 불투명하다 */
     head.style.setProperty('--hd-avbg', mixHex(th.bg, th.fg, .55));
   }
 
@@ -3046,7 +3179,10 @@ const MU_W_EM = 27;
 /* 가수 크기와 «제목–가수 사이» 는 둘 다 본문 크기에 대한 비율이다. 예전에는 사이 간격이
    «비율 + 고정 2px» 이라 글자를 키우면 간격만 상대적으로 좁아졌다 — 비율 하나로 고친다.
    (12.5px 기준 예전 값 2.63px 을 그대로 내는 비율이 .21 이다.) */
-const MU_ARTIST_R = .81, MU_GAP_R = .21, MU_ARTIST_O = 77;
+/* 가수 비율은 .81 → .88 이다. .81 은 제목과 한 뼘 차이가 나 «작은 글씨» 로 읽혔는데,
+   제목이 본문 크기로 내려앉은 뒤로는 그 뼘이 과했다 — 두 줄이 한 덩어리로 읽히는 쪽에 맞춘다.
+   (.81 · .85 · .90 을 나란히 놓고 고른 값이다. 눈에 띄게 작지 않으면서 제목과는 구별된다.) */
+const MU_ARTIST_R = .88, MU_GAP_R = .21, MU_ARTIST_O = 77;
 /* 카드 바탕의 기본값 — 사진 예시(iOS 재생 위젯)처럼 «흰 종이 한 장을 반투명하게 얹은» 꼴이다.
    배경 이미지를 깔았을 때 그 아래가 비쳐야 카드로 읽힌다. */
 const MU_CARD = '#FFFFFF', MU_CARD_A = 55;
@@ -3111,7 +3247,9 @@ function musicNode(b, th) {
   /* 제목·가수의 «글씨» 는 블록이 따로 고를 수 있다 — 글꼴과 색 둘뿐이다 [buildMusicEditor].
      안 고르면 본문의 것을 그대로 물려받는다. 크기는 여기 없다 — 본문과 나란한 크기라는
      것이 이 카드의 약속이라 [.mu-title] 손잡이를 주지 않는다.
-     이 두 줄에만 건다 — 하트·재생 단추·진행바는 제 색을 따로 가진다.
+     이 두 줄에만 건다 — 하트·진행바는 제 색을 따로 가진다.
+     (재생 단추는 편집기에서 이 색과 한 칸으로 묶여 있어 같은 값이 들어온다 [buildMusicEditor].
+      그래도 여기서 따로 받는다 — 서로 다른 색을 담은 예전 저장본이 그대로 그려져야 한다.)
      (가수는 opacity:.6 이 걸려 있어 [.mu-artist], 같은 색을 줘도 제목보다 옅게 남는다.)
      (블록이 제 글꼴을 가지면 저장할 때 임베드 목록에도 저절로 오른다 [usedFonts].) */
   if (b.font) meta.style.fontFamily = fontStack(b.font);
@@ -3304,6 +3442,10 @@ function setStage(st, keepNav) {
      경우만 예외다 — 그때는 옮긴 목적이 곧 칩을 펴는 것이라 열어 둔 채로 간다. */
   S.ui.navOpen = !!keepNav;
   S.ui.stage = st;
+  /* 데스크톱 한 기둥 배치에서 «열려 있을 칸» 도 함께 옮긴다 [setDeskPane] — 캔버스의 블록을
+     눌러 들어오는 길처럼 시트 밖에서 시작한 이동은 칸을 누른 적이 없어 저절로 안 따라온다.
+     그러면 서식이 밀린 칸 안에서 열려, 고치러 왔는데 고칠 데가 안 보인다. */
+  S.ui.deskPane = st === 'tools' ? 'tools' : 'dock';
   if (st === 'tools' && document.activeElement && document.activeElement.blur) document.activeElement.blur();
   S.ui.panel = (st === 'tools' || st === 'format') ? 'full' : (S.ui.panel || 'compact');
   if (closesTools) { S.ui.editingCharacterId = null; S.ui.charDraft = null; S.ui.editingThemeId = null; S.ui.themeDraft = null; }
@@ -3604,6 +3746,11 @@ function junkStrip(root, kinds) {
 /* 올리기 직전에 한 번 묻는다. 걸리는 것이 없으면 그냥 올린다 — 평소에는 아무 일도 없다. */
 function commitWithCleanup() {
   const ta = $('#ta');
+  /* HTML 블록만은 예외다 — 여기서는 태그도 따옴표도 «붙어 온 찌꺼기» 가 아니라 내용 그 자체다.
+     <div class="x"> 를 걷어내면 적은 글이 통째로 부서진다. 묻지 않고 그대로 올린다.
+     새로 적는 중[insertMode]과 이미 올린 것을 고치는 중[블록 종류] 둘 다 같은 자리다. */
+  const editing = selBlock();
+  if (S.ui.insertMode === 'html' || (editing && editing.type === 'html')) { commit(); return; }
   const hit = junkScan(ta);
   const found = JUNK_KIND.filter(([k]) => hit[k] > 0);
   if (!found.length) { commit(); return; }
@@ -3706,17 +3853,22 @@ function renderFormat() {
     const l = el('div', 'tool-line');
     /* 문서 편집의 뒤로/앞으로 — 방금 한 일을 무르고 되살린다 [histUndo/histRedo].
        ⌘Z · ⌘⇧Z 로도 된다. */
+    /* 화살표 하나만 남긴다 — 방향이 곧 뜻이라 «뒤로 · 앞으로» 는 읽지 않아도 안다.
+       글자를 뗀 만큼 좌우 여백도 걷고 네모로 세운다(높이와 같은 34px). 안 그러면
+       화살표 하나에 24px 여백이 붙어 오른쪽의 복제·삭제보다 헐거워 보인다.
+       읽어 주는 이름은 title 로만 남으므로 aria-label 로 같은 말을 한 번 더 준다. */
     const histBtn = (label, title, ok, run) => {
       const btn = el('button', 'btn btn-quiet', label);
       btn.title = title;
-      btn.style.cssText = 'height:34px;padding:0 12px;min-width:0';
+      btn.setAttribute('aria-label', title);
+      btn.style.cssText = 'height:34px;width:34px;padding:0;min-width:0';
       btn.disabled = !ok;
       btn.onclick = run;
       return btn;
     };
     const gMove = el('div', 'tool-grp');
-    const bU = histBtn('← 뒤로', '실행 취소 (⌘Z)', canUndo(), histUndo);
-    const bR = histBtn('앞으로 →', '다시 실행 (⌘⇧Z)', canRedo(), histRedo);
+    const bU = histBtn('←', '실행 취소 (⌘Z)', canUndo(), histUndo);
+    const bR = histBtn('→', '다시 실행 (⌘⇧Z)', canRedo(), histRedo);
     _histBtns = { u: bU, r: bR };
     gMove.append(bU, bR);
     /* 복제 — 같은 말풍선을 발화자만 바꿔 쓰거나, 서식을 잡아 둔 블록을 본으로 삼는 일이 잦다.
@@ -3806,7 +3958,10 @@ function renderFormat() {
     });
   } else {
     const i = Math.max(0, alignKeys.indexOf(curAlign));
-    const btn = alignBtn(alignKeys[i], false);
+    /* 단추가 하나뿐이어도 켜짐은 표시한다 — 이 블록이 «제 정렬을 따로 들고 있는가» 다.
+       넓은 화면에서 넷 중 하나가 켜지는 것과 같은 뜻이고, 그 표시가 없으면 지금 보이는
+       그림이 «이 블록의 것» 인지 «테마 기본값» 인지 구별할 길이 없었다 [B/I/U 와 같은 규칙]. */
+    const btn = alignBtn(alignKeys[i], !!b && !!b.align && b.align !== g.align);
     btn.title = ALIGN_NAME[alignKeys[i]] + ' · 누르면 다음';
     btn.onclick = () => setAlign(alignKeys[(i + 1) % alignKeys.length]);
     g1.appendChild(btn);
@@ -3847,7 +4002,18 @@ function renderFormat() {
      조각 크기는 마크업 [+]…[/+] · [-]…[/-] 로 글에 남고, 블록 전체 크기는 b.sizeLv 로
      블록에 남는다. 둘은 겹쳐 걸릴 수 있다(블록을 크게 + 그 안 한 낱말을 더 크게). */
   const segSz = el('div', 'tool-grp');
-  const curLv = b ? (b.sizeLv || 0) : 0;
+  /* «지금 몇 단계인가» 는 무엇을 고쳤느냐를 따라간다 — 조각을 골랐으면 그 조각의 단계,
+     아니면 블록의 단계. 예전에는 선택이 있어도 블록 값(b.sizeLv)만 봤다. 좁은 화면의
+     «누르면 다음» 단추는 그 값에서 다음 단계를 고르므로, 낱말을 골라 놓고 누르면 늘
+     같은 단계만 다시 걸렸다 — 한 번 «크게» 가 된 뒤로는 아무리 눌러도 «크게» 였다.
+     [모바일 사파리에서 «일부만 골라 크기 바꾸기» 가 안 먹던 것이 이것이다.] */
+  const onSel = !!b && hasSel();
+  const curLv = !b ? 0 : (onSel ? richSizeLv() : (b.sizeLv || 0));
+  /* 켜짐 표시는 «블록 전체에 걸린 것» 만 한다 [B/I/U·주석과 같은 규칙].
+     일부만 골라 건 크기는 그 조각의 일이라, 단추를 켜 두면 «이 블록이 그렇다» 로 잘못 읽힌다.
+     — 단추가 가리키는 «다음 단계»(curLv)는 조각을 따라가고, 켜짐만 블록을 따라간다. */
+  const blockLv = b ? (b.sizeLv || 0) : 0;
+  const szOn = !!b && !onSel;
   const applySize = v => {
     if (!b) return;
     if (hasSel()) {
@@ -3864,21 +4030,22 @@ function renderFormat() {
   };
   const sizeBtn = (v, label, cls, on) => {
     const btn = el('button', 'icb' + (on ? ' is-on' : ''));
-    btn.innerHTML = `<span class="szA ${cls}">A</span>`;
+    /* 작게만 소문자다 — 크게는 굵기로 갈린다 [.icb .szA] */
+    btn.innerHTML = `<span class="szA ${cls}">${cls === 's' ? 'a' : 'A'}</span>`;
     btn.title = label;
     btn.disabled = !b;
     return btn;
   };
   if (wide) {
     SIZE_LV_UI.forEach(([v, label, cls]) => {
-      const btn = sizeBtn(v, label, cls, b && !hasSel() && curLv === v);
+      const btn = sizeBtn(v, label, cls, szOn && blockLv === v);
       bindFormatAction(btn, () => applySize(v));
       segSz.appendChild(btn);
     });
   } else {
     const i = Math.max(0, SIZE_LV_UI.findIndex(x => x[0] === curLv));
     const [, label, cls] = SIZE_LV_UI[i];
-    const btn = sizeBtn(curLv, label + ' · 누르면 다음', cls, false);
+    const btn = sizeBtn(curLv, label + ' · 누르면 다음', cls, szOn && blockLv !== 0);
     const nxt = SIZE_LV_UI[(i + 1) % SIZE_LV_UI.length][0];
     bindFormatAction(btn, () => applySize(nxt));
     segSz.appendChild(btn);
@@ -4502,6 +4669,16 @@ function cropField(src, ratio) {
     st.x = cx - (cx - st.x) * k; st.y = cy - (cy - st.y) * k;
     st.scale = next; clampPos(); apply();
   };
+  /* 틀 한가운데에 놓는다. 꽉 채우고 남는 쪽을 어디에 흘릴지를 refit 은 «왼쪽 위» 로 두는데,
+     배경 이미지처럼 캔버스가 «가운데 정렬(50% 50%)» 로 그리는 자리는 첫 화면이 그와 같아야
+     열자마자 다른 그림이 보이지 않는다 [openBgImageModal].
+     손댄 것으로는 치지 않는다 — 열어 보기만 하고 나가면 원본 그대로 나가야 한다 [_export]. */
+  box._center = () => {
+    const fw = box.clientWidth, fh = box.clientHeight;
+    st.x = (fw - st.natW * st.scale) / 2;
+    st.y = (fh - st.natH * st.scale) / 2;
+    clampPos(); apply();
+  };
   box._state = st;
   box._setSrc = setSrc;
   /* 창에 떨군 사진을 이 틀이 받는다 — 받은 뒤 무엇을 더 할지는 모달이 정한다(_onPick) */
@@ -4592,7 +4769,10 @@ function buildMusicEditor(host, block) {
   body.appendChild(lay);
 
   /* 앨범 커버 — 고른 것이 있을 때만 카드에 붙는다. 지우면 제목이 다시 왼쪽 끝에 선다.
-     원본 그대로 담으면 저장 공간이 금세 찬다 — 256px 로 줄여 넣는다. */
+     고르는 길은 캐릭터 프로필과 같은 정사각형 자르기 창이다 [openAvatarModal] — 커버는
+     카드 안에서 정사각형으로 잘려 나가므로(object-fit:cover) 어디가 잘리는지 눈으로 보고
+     맞출 데가 있어야 한다. 파일을 고르자마자 그대로 박히면 인물이 반쯤 잘린 채 들어간다.
+     (구워 낼 때 256px 로 줄여 담는 것도 그 창이 함께 한다.) */
   const cov = el('div');
   cov.appendChild(el('span', 'lab', '앨범 커버'));
   const covRow = el('div');
@@ -4610,23 +4790,15 @@ function buildMusicEditor(host, block) {
     } else prev.textContent = '없음';
   };
   paintCov();
-  const shrink = (src, cb) => {
-    const im = new Image();
-    im.onload = () => {
-      const k = Math.min(1, 256 / Math.max(im.width, im.height));
-      const c = document.createElement('canvas');
-      c.width = Math.max(1, Math.round(im.width * k));
-      c.height = Math.max(1, Math.round(im.height * k));
-      const g2 = c.getContext('2d');
-      if (!g2) { cb(src); return; }
-      g2.drawImage(im, 0, 0, c.width, c.height);
-      try { cb(c.toDataURL('image/png')); } catch (_) { cb(src); }
-    };
-    im.onerror = () => cb(src);
-    im.src = src;
-  };
+  const openCover = () => openAvatarModal(block.cover || '', d => {
+    if (d) block.cover = d; else delete block.cover;
+    save(); render();
+  }, { title: '앨범 커버', sub: '카드에서는 정사각형으로 잘려 들어갑니다. 끌어서 위치를 맞추세요.' });
+  /* 미리보기 자체가 과녁이다 — 캐릭터 프로필 칸과 같은 손놀림이다 */
+  prev.style.cursor = 'pointer';
+  prev.onclick = openCover;
   const pickBtn = el('button', 'btn btn-quiet', block.cover ? '바꾸기' : '이미지 고르기');
-  pickBtn.onclick = () => pickImage(src => shrink(src, d2 => { block.cover = d2; save(); render(); }));
+  pickBtn.onclick = openCover;
   const clrBtn = el('button', 'btn btn-quiet', '지우기');
   clrBtn.disabled = !block.cover;
   clrBtn.onclick = () => { delete block.cover; save(); render(); };
@@ -4646,16 +4818,19 @@ function buildMusicEditor(host, block) {
 
   /* 색 — 안 건드리면 모두 본문 글자색을 그대로 따라간다. 그래서 처음 값은 «지금 나오는
      그 색» 이다. 한 번 고르면 그 블록의 값이 되어 테마를 바꿔도 안 따라온다.
-     글자와 하트는 «글씨 옆의 것» 이라 한 줄에 세우고, 단추와 진행바는 나란히 두어 둘을
-     견주며 고르게 한다. 카드 배경만 홀로 맨 뒤에 두어 바로 아래 불투명도와 한 덩어리로
+     첫 줄은 «카드가 말하는 것»(제목·가수·재생 단추)과 그 옆의 북마크, 둘째 줄은 진행바.
+     카드 배경만 홀로 맨 뒤에 두어 바로 아래 불투명도와 한 덩어리로
      읽히게 한다 — 그 둘이 실제로 «카드가 보이는 색» 하나를 만든다 [musicNode]. */
   const cg = el('div', 'grid2');
-  cg.appendChild(colorField('제목·가수 색', block.textColor || th.fg,
-    v => { block.textColor = v; save(); renderCanvas(); }));
+  /* 제목·가수와 재생 단추는 한 칸으로 묶는다 — 둘은 «카드가 말하는 것» 이라 색이 갈리면
+     카드가 두 덩어리로 쪼개져 보인다. 진행바·북마크는 그대로 따로 둔다: 진행바는 «지나간
+     만큼» 을 가리키는 표시라 오히려 글자와 달라야 읽히고, 북마크는 색으로 강조하는 자리다.
+     저장하는 값은 예전 그대로 둘이다 [textColor · btnColor] — 서로 다른 색을 담고 있는
+     예전 저장본도 그대로 그려지고, 여기서 한 번 고르면 그때 둘이 같아진다. */
+  cg.appendChild(colorField('제목·가수·단추 색', block.textColor || block.btnColor || block.tint || th.fg,
+    v => { block.textColor = v; block.btnColor = v; save(); renderCanvas(); }));
   cg.appendChild(colorField('북마크 색', block.heartColor || th.fg,
     v => { block.heartColor = v; save(); renderCanvas(); }));
-  cg.appendChild(colorField('재생 단추 색', block.btnColor || block.tint || th.fg,
-    v => { block.btnColor = v; save(); renderCanvas(); }));
   cg.appendChild(colorField('진행바 색', block.barColor || block.tint || th.fg,
     v => { block.barColor = v; save(); renderCanvas(); }));
   cg.appendChild(colorField('카드 배경', block.card || MU_CARD,
@@ -4787,9 +4962,14 @@ function buildImageEditor(host, block, initialSrc) {
   };
 }
 
-/* 캐릭터 이미지 모달 — 파일 · 링크 [원본 memberEditor 의 tabFile/tabLink] */
-function openAvatarModal(cur, onDone) {
-  const p = modal('캐릭터 이미지', '정사각형으로 잘라 넣습니다. 끌어서 위치를 맞추세요.');
+/* 정사각형 이미지 모달 — 파일 · 링크 [원본 memberEditor 의 tabFile/tabLink]
+   캐릭터 프로필과 화면머리 사진, 그리고 음악 카드의 앨범 커버가 같은 칸을 쓴다.
+   셋 다 «정사각형으로 잘라 넣고, 끌어서 위치를 맞추고, 확대로 크기를 잡는» 같은 일이라
+   틀을 하나만 두고 머리말만 갈아 끼운다 — 자리마다 다른 자르기 창을 두면 손이 헤맨다. */
+function openAvatarModal(cur, onDone, opts) {
+  const o = opts || {};
+  const p = modal(o.title || '캐릭터 이미지',
+    o.sub || '정사각형으로 잘라 넣습니다. 끌어서 위치를 맞추세요.');
   const crop = cropField(cur, '1:1');
   crop._maxPx = 256;
   const zoomWrap = el('div');
@@ -4821,8 +5001,82 @@ function openAvatarModal(cur, onDone) {
   ok.onclick = () => {
     const d = crop._export() || cur || '';
     closeModal();
-    /* 프로필은 캔버스에서 28px 로 그려진다 — 원본 해상도를 들고 있을 이유가 없다 */
+    /* 프로필은 캔버스에서 28px, 앨범 커버도 50px 남짓이다 — 원본 해상도를 들고 있을 이유가 없다 */
     shrinkImage(d, 256).then(onDone);
+  };
+  foot.append(rm, cancel, ok); p.appendChild(foot);
+}
+
+/* 배경 이미지 자르기 창 — 캔버스와 «같은 비율» 의 틀에 넣고 끌어서 맞춘다.
+   프로필·앨범 커버가 정사각 하나로 고정인 것과 달리 여기는 비율부터 고르게 한다:
+   배경은 캔버스를 가득 채우는 그림이라, 어느 비율에 넣을지가 곧 어디가 잘리는지다.
+   [핵심] 여기서 고른 비율은 틀만이 아니라 캔버스 설정 자체를 바꾼다. 틀만 바꾸고 두면
+   «틀에 맞춰 잘랐는데 캔버스는 딴 비율» 이 되어 잘라 넣은 뜻이 통째로 없어진다.
+   «맞춤» 이던 캔버스도 «비율 지정» 으로 데려온다 — 비율을 고른다는 것이 곧 그 말이다.
+   [취소] 로 나가면 열 때의 캔버스 설정으로 되돌린다. 눌러 보다 만 것까지 남으면 안 된다. */
+function openBgImageModal(cur, onDone) {
+  const c = S.canvas;
+  const was = { mode: c.mode || 'ratio', ratio: c.ratio };
+  const p = modal('배경 이미지',
+    '고른 비율은 캔버스에도 그대로 적용됩니다. 끌어서 위치를, 아래에서 크기를 맞추세요.');
+
+  const crop = cropField(cur || '', c.ratio || '9:16');
+  /* 배경은 캔버스를 가득 채운다 — 프로필(256)보다 훨씬 크게 구워야 늘어져 보이지 않는다 */
+  crop._maxPx = 1600;
+
+  const RSUB = { '9:16': '스토리', '3:4': '세로', '1:1': '정사각', '4:3': '가로', '16:9': '와이드' };
+  const ratios = el('div', 'crop-ratios');
+  Object.keys(RATIOS).forEach(r => {
+    const b = el('button', (!isFit() && c.ratio === r) ? 'on' : '');
+    b.innerHTML = `${r}<small>${RSUB[r]}</small>`;
+    b.onclick = () => {
+      c.mode = 'ratio'; c.ratio = r;
+      [...ratios.children].forEach(x => x.classList.toggle('on', x === b));
+      crop._setRatio(r);
+      /* 캔버스만 다시 그린다 — render() 는 시트를 통째로 새로 그려 이 창 뒤의 자리를 흔든다 */
+      save(); renderCanvas();
+    };
+    ratios.appendChild(b);
+  });
+
+  const zoomWrap = el('div');
+  zoomWrap.appendChild(el('span', 'lab', '확대'));
+  const zoom = el('input', 'rng'); zoom.type = 'range'; zoom.step = '0.01';
+  zoomWrap.appendChild(zoom);
+  crop._onScale = base => {
+    zoom.min = base; zoom.max = base * 3; zoom.value = base;
+    crop._center();          /* 캔버스가 가운데 정렬로 그리므로 첫 화면도 가운데다 */
+  };
+  zoom.oninput = () => crop._zoom(parseFloat(zoom.value));
+
+  const body = el('div', 'stack');
+  const stage = el('div', 'crop-stage'); stage.style.position = 'relative';
+  crop._onPick = () => { reBtn.hidden = false; };
+  const pick = () => pickImage(d => { crop._setSrc(d); reBtn.hidden = false; });
+  crop.style.cursor = 'pointer';
+  crop.addEventListener('click', e => { if (!crop._src) { e.stopPropagation(); pick(); } });
+  const reBtn = el('button', 'btn btn-quiet', '이미지 바꾸기');
+  reBtn.style.cssText = 'position:absolute;right:8px;bottom:8px;z-index:4;box-shadow:var(--shadow-pop)';
+  reBtn.hidden = !cur;
+  reBtn.onclick = e => { e.stopPropagation(); pick(); };
+  stage.append(crop, reBtn);
+  body.append(ratios, stage, zoomWrap);
+  p.appendChild(body);
+
+  const foot = el('div', 'modal-foot');
+  const rm = el('button', 'btn btn-quiet', '제거');
+  rm.onclick = () => { closeModal(); onDone(''); };
+  const cancel = el('button', 'btn btn-quiet', '취소');
+  cancel.onclick = () => { c.mode = was.mode; c.ratio = was.ratio; save(); closeModal(); render(); };
+  const ok = el('button', 'btn btn-primary', '확인');
+  ok.onclick = () => {
+    const out = crop._export() || cur || '';
+    closeModal();
+    /* 끌지도 확대하지도 않았으면 _export() 가 원본을 그대로 돌려준다 — 그때는 확대·위치
+       값을 건드리지 않는다. 눌러 보기만 하고 나간 사람의 설정까지 되돌리면 안 된다.
+       실제로 잘라 낸 경우에는 그림이 이미 캔버스 비율이므로, 겹쳐 걸린 확대·위치를
+       기본으로 돌려 «자른 그대로» 가 보이게 한다 [renderCanvas 의 --bgs/--bgp]. */
+    onDone(out, out !== (cur || ''));
   };
   foot.append(rm, cancel, ok); p.appendChild(foot);
 }
@@ -5287,19 +5541,30 @@ function themeEditor() {
   g.appendChild(colorField('내 말풍선 글자', t.myBubbleFg || t.bubbleFg, v => { t.myBubbleFg = v; up(); }));
   box.appendChild(g);
 
-  /* 배경 이미지 [원본 backgroundImageSection — 파일·링크 + 크기·회전·위치·흐림·오버레이] */
+  /* 배경 이미지 [원본 backgroundImageSection — 파일·링크 + 크기·회전·위치·흐림·오버레이]
+     «크기» 는 자르기 창으로 옮겼다 [openBgImageModal] — 여기 남은 것은 회전·위치·흐림·덮기다. */
   box.appendChild(el('div', 'divider'));
   box.appendChild(el('div', 'sec-title', '배경 이미지'));
 
+  /* 고르는 길은 자르기 창이다 [openBgImageModal] — 비율 · 확대 · 위치를 눈으로 보고 맞춘다.
+     예전에는 파일을 고르면 그대로 박히고, 어긋난 자리는 아래 슬라이더로 더듬어 맞춰야 했다. */
+  const openBg = () => openBgImageModal(t.bgImage || '', (d, cropped) => {
+    t.bgImage = d;
+    /* 실제로 잘라 낸 그림은 이미 캔버스 비율이다 — 겹쳐 걸린 확대·위치를 기본으로 되돌려
+       «자른 그대로» 가 보이게 한다. 회전·흐림·덮기는 그림과 별개라 그대로 둔다. */
+    if (cropped) { t.bgSize = 100; t.bgX = 50; t.bgY = 50; }
+    render();
+  });
   if (t.bgImage) {
     const pv = el('div', 'imgprev'); pv.style.padding = '0'; pv.style.height = '92px';
-    pv.style.cssText += `background-image:url("${t.bgImage}");background-size:cover;background-position:center;border-radius:var(--r-sm)`;
+    pv.style.cssText += `background-image:url("${t.bgImage}");background-size:cover;background-position:center;border-radius:var(--r-sm);cursor:pointer`;
+    pv.onclick = openBg;
     box.appendChild(pv);
   }
   const bRow = el('div', 'row'); bRow.style.marginTop = t.bgImage ? '10px' : '0';
   const pickBtn = el('button', 'btn btn-quiet', t.bgImage ? '이미지 교체' : '이미지 업로드');
   pickBtn.style.cssText = 'flex:1;height:38px';
-  pickBtn.onclick = () => pickImage(d => { t.bgImage = d; render(); });
+  pickBtn.onclick = openBg;
   bRow.appendChild(pickBtn);
   if (t.bgImage) {
     const rm = el('button', 'btn btn-quiet', '제거'); rm.style.height = '38px';
@@ -5311,7 +5576,10 @@ function themeEditor() {
 
   if (t.bgImage) {
     const bg2 = el('div', 'grid2'); bg2.style.cssText = 'margin-top:11px;row-gap:9px';
-    bg2.appendChild(sliderH('확대', t.bgSize ?? 100, 10, 400, 5, v => { t.bgSize = v; up(); }, '%'));
+    /* «확대» 슬라이더는 걷었다 — 자르기 창에서 눈으로 보고 맞추는 일이 되었으므로
+       [openBgImageModal], 여기 남겨 두면 같은 일을 두 군데서 하게 되고 둘이 겹쳐 걸린다.
+       값(bgSize)은 그대로 산다 — 예전 저장본과 들여온 설정이 담고 있고, 캔버스도 그것을
+       읽어 그린다 [renderCanvas 의 --bgs]. 고치는 손잡이만 한 곳으로 모은 것이다. */
     bg2.appendChild(rotate90Row(t.bgRotation ?? 0, v => { t.bgRotation = v; up(); }));
     bg2.appendChild(positionButtons(t.bgX ?? 50, t.bgY ?? 50, (x, y) => { t.bgX = x; t.bgY = y; up(); }));
     bg2.appendChild(stepH('흐림', t.bgBlur ?? 0, 0, 40, 1, v => { t.bgBlur = v; up(); }));
@@ -6094,6 +6362,11 @@ function captureCloneAt(cv) {
   clone.style.setProperty('transition', 'none', 'important');
   clone.style.setProperty('margin', '0', 'important');
   clone.style.setProperty('box-shadow', 'none', 'important');
+  /* 둥근 모서리는 «미리보기에서 카드로 보이라고» 준 것이다 [.canvas border-radius:6px].
+     저장본은 그림 파일 자체라 모서리를 깎을 이유가 없다 — 깎으면 네 귀가 투명하게 뚫린다.
+     배경이 단색일 때는 흰 종이 위에서 티가 안 났지만, 배경 이미지를 깔면 그 네 귀만
+     이미지가 빠져 눈에 띈다. 그림자를 걷어내는 것과 같은 자리에서 함께 편다. */
+  clone.style.setProperty('border-radius', '0', 'important');
   ['width', 'min-width', 'max-width'].forEach(k => clone.style.setProperty(k, w + 'px', 'important'));
   ['height', 'min-height', 'max-height'].forEach(k => clone.style.setProperty(k, h + 'px', 'important'));
   clone.querySelectorAll('.pagemark').forEach(n => n.remove());
@@ -6708,8 +6981,139 @@ function render() {
   $('#sheet').classList.toggle('is-tools', S.ui.stage === 'tools');
   $('#sheet').classList.toggle('is-compact', S.ui.panel === 'compact');
   $('#sheet').classList.toggle('is-full', S.ui.panel === 'full');
+  $('#sheet').classList.toggle('pane-tools', S.ui.deskPane === 'tools');
+  applySnap();
   requestAnimationFrame(measureSheet);
 }
+
+/* ═══ 시트 손잡이 ═══════════════════════════════════════════════
+   끌어서 시트 높이를 바꾸고, 손을 떼면 정해 둔 지점에 붙는다.
+   지점을 두는 이유는 «늘 같은 자리» 를 만들기 위해서다 — 아무 데나 멈추면 다음에 열 때마다
+   조금씩 다른 화면이 되어, 어디까지 보이는지를 매번 다시 가늠해야 한다.
+
+   지점은 셋이다 — «원본(null) · 60% · 90%».
+   원본은 «각자의 최소» 다: 손잡이가 정한 높이를 걷어 내고, 그 단계가 원래 쓰던 높이로
+   돌려놓는다. 글만 쓰는 중이면 한 줄짜리, 서식이 떠 있으면 그 서식만큼. 손잡이로 «접는»
+   지점은 두지 않는다 — 접힘[.is-compact]은 도구를 닫고 나오는 길 따위가 따로 쥐고 있다. */
+const SNAPS = [60, 90];
+/* 지점을 재는 기준 높이. --app-vh 는 키보드가 열리면 «보이는 만큼» 으로 줄어드는데,
+   그 값을 쓰면 키보드를 여는 순간 90% 로 열어 둔 시트가 키보드 높이에 맞춰 쪼그라들고,
+   그 뒤로는 위로 끌어도 그 줄어든 화면의 92% 가 상한이라 다시 커지지 않는다.
+   [아이폰에서 «90% 로 열었다가 키보드 뜨면 돌아가고 다시 안 올라간다» 가 이것이다.]
+   시트는 화면 바닥에 못 박힌 상자라 키보드는 그 «위에» 덮일 뿐이므로, 높이는 키보드와
+   무관한 창 높이로 잰다. 가려지는 몫은 --keyboard-inset 이 따로 밀어 올린다. */
+const snapVH = () => window.innerHeight || 800;
+function applySnap() {
+  const sheet = $('#sheet'), n = S.ui.snap;
+  sheet.classList.toggle('has-snap', n != null);
+  /* dvh 하나만 쓴다 — --app-vh 로 한 번 더 조이면 키보드가 열릴 때 같이 줄어든다 */
+  if (n != null) sheet.style.setProperty('--snap-h', n + 'dvh');
+  else sheet.style.removeProperty('--snap-h');
+}
+/* 높이만 바꾼다 — render() 를 부르면 패널이 통째로 새로 그려져 치던 자리와 선택 영역을 잃는다.
+   원본(null)으로 돌아갈 때는 접힘 여부도 그 단계가 원래 쓰던 값으로 되돌린다 [setStage 와 같은 셈]. */
+function setSnap(n) {
+  S.ui.snap = n;
+  if (n != null) { S.ui.snapLast = n; S.ui.panel = 'full'; }
+  else S.ui.panel = (S.ui.stage === 'tools' || S.ui.stage === 'format') ? 'full' : 'compact';
+  $('#sheet').classList.toggle('is-compact', S.ui.panel === 'compact');
+  applySnap();
+  requestAnimationFrame(measureSheet);
+}
+(function initSheetGrab() {
+  const grab = $('#sheetGrab'), sheet = $('#sheet');
+  const MIN_PX = 44, MOVE_TOL = 4;
+  let st = null;
+  /* 키보드가 열려 있으면 «접힌» 시트의 작성 묶음이 키보드 높이만큼 아래 여백을 갖는다
+     [.is-writing.is-compact .dock{padding-bottom:--keyboard-inset}]. 그 몫은 «시트가 그만큼
+     크다» 가 아니라 «키보드에 가린 만큼 밀어 올린 것» 이라, 높이를 잴 때는 빼야 한다.
+     [키보드를 켠 채로 끌면 시트가 손끝보다 키보드 높이만큼 더 올라가던 것이 이것이다 —
+      끌기 시작 높이에 이미 그 여백이 얹혀 있었다.] */
+  const kbInset = () => (sheet.classList.contains('is-compact')
+    ? (parseFloat(getComputedStyle(document.documentElement)
+        .getPropertyValue('--keyboard-inset')) || 0) : 0);
+  const liveH = () => sheet.getBoundingClientRect().height - kbInset();
+  /* 손잡이가 쥔 높이를 잠깐 놓고 «원래 높이» 를 재 본다. 한 프레임 안에서 재고 되돌리므로
+     화면에 그려질 틈이 없다(전부 동기) [captureClone 이 축소를 잠깐 푸는 것과 같은 수법]. */
+  const naturalPx = () => {
+    const had = sheet.classList.contains('has-snap');
+    if (had) sheet.classList.remove('has-snap');
+    const h = liveH();
+    if (had) sheet.classList.add('has-snap');
+    return h;
+  };
+  grab.addEventListener('pointerdown', e => {
+    if (isWide()) return;
+    e.preventDefault();
+    /* «원본» 이 몇 px 인지는 단계마다 다르다 — 손잡이가 쥔 높이를 잠깐 걷어 내고 재 둔다.
+       끌기가 끝나고 어느 지점에 붙일지 고를 때 이 값이 세 번째 후보가 된다. */
+    st = { id: e.pointerId, y: e.clientY, h: liveH(), nat: naturalPx(), moved: false };
+    try { grab.setPointerCapture(e.pointerId); } catch (_) { }
+    sheet.classList.add('is-dragging');
+  });
+  grab.addEventListener('pointermove', e => {
+    if (!st || e.pointerId !== st.id) return;
+    const dy = st.y - e.clientY;                   /* 위로 끌면 커진다 */
+    if (Math.abs(dy) > MOVE_TOL) st.moved = true;
+    if (!st.moved) return;
+    /* 끄는 동안은 지점을 안 본다 — 손끝 그대로 따라온다. 다만 «갈 수 있는 데» 는 지점의
+       양 끝을 넘지 않는다: 위로는 가장 큰 지점(90%), 아래로는 원본(그보다 크면 60%)이다.
+       예전에는 위 상한이 92% 라 손을 떼기 전까지 90% 보다 커 보였고, 아래는 44px 이라
+       원본보다도 작게 눌렸다 — 붙을 자리가 없는 데까지 끌리면 «튕겨 돌아가는» 것처럼 보인다. */
+    const MAX = snapVH() * SNAPS[SNAPS.length - 1] / 100;
+    const MIN = Math.max(MIN_PX, Math.min(st.nat, snapVH() * SNAPS[0] / 100));
+    const h = clamp(st.h + dy, MIN, MAX);
+    sheet.classList.remove('is-compact');
+    sheet.classList.add('has-snap');
+    sheet.style.setProperty('--snap-h', h + 'px');
+    measureSheet();
+  });
+  const end = e => {
+    if (!st || (e && e.pointerId !== st.id)) return;
+    sheet.classList.remove('is-dragging');
+    /* 사람이 손잡이를 만졌으면 «키보드 닫힐 때 되돌리기» 는 없던 일로 한다 —
+       방금 정한 자리를 키보드가 내려가면서 도로 물리면 정한 뜻이 없다 [autoSnapForWriting] */
+    S.ui.snapAuto = null;
+    if (!st.moved) {
+      /* 짧게 누른 것 — 원본 크기와 «직전 크기» 를 오간다 */
+      setSnap(S.ui.snap == null ? (S.ui.snapLast || 60) : null);
+    } else {
+      const pct = liveH() / snapVH() * 100;
+      /* 후보는 «원본 · 60 · 90». 원본이 이기면 손잡이가 쥔 높이를 통째로 놓는다(null). */
+      let best = null, bestD = Math.abs(st.nat / snapVH() * 100 - pct);
+      SNAPS.forEach(v => { const d = Math.abs(v - pct); if (d < bestD) { best = v; bestD = d; } });
+      setSnap(best);
+    }
+    st = null;
+  };
+  grab.addEventListener('pointerup', end);
+  grab.addEventListener('pointercancel', end);
+})();
+
+/* 데스크톱 한 기둥 배치에서 어느 칸을 열어 둘 것인가 [.sheet.pane-tools].
+   [주의] 여기서 render() 를 부르면 안 된다 — 칸을 누를 때마다 패널이 통째로 새로 그려져
+   치던 자리와 골라 둔 선택 영역을 잃는다. class 만 갈아 끼우고 높이만 다시 잰다.
+   (상태는 S.ui 에 남아, 다음 render() 도 같은 자리를 다시 그린다.) */
+function setDeskPane(p) {
+  if (S.ui.deskPane === p) return;
+  S.ui.deskPane = p;
+  $('#sheet').classList.toggle('pane-tools', p === 'tools');
+  requestAnimationFrame(measureSheet);
+}
+/* 밀려 있는 칸을 누르면 그쪽이 열린다. 누른 것을 삼키지는 않는다 —
+   접힌 칸의 탭을 눌러 «열면서 그 탭으로» 가는 것이 한 번에 되어야 한다.
+   두 칸이 나란히 서는 폭에서만 뜻이 있다: 좁은 화면은 한 칸을 번갈아 쓰고,
+   1500px 부터는 좌우로 갈라져 둘 다 늘 보인다. */
+(function initDeskPanes() {
+  const split = () => window.matchMedia('(min-width:900px) and (max-width:1499.98px)').matches;
+  const bind = (sel, pane) => {
+    const node = $(sel);
+    ['pointerdown', 'focusin'].forEach(ev =>
+      node.addEventListener(ev, () => { if (split()) setDeskPane(pane); }, true));
+  };
+  bind('#sheetBody', 'tools');
+  bind('#dock', 'dock');
+})();
 
 let suppressBlockTapUntil = 0;
 /* ═══════════════════════════════════════════════════════════════

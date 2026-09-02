@@ -3311,8 +3311,22 @@ const sameRun = (a, b) => !!a && !!b && !!a.asBubble && !!b.asBubble
    찾아 400 이 걸린다 — 굵게를 걸어도 보통과 한 획도 다르지 않았다. 어느 글꼴이든 가지고
    있는 700 으로 맞춘다. [SCHEMA 7 에서 저장된 값도 함께 옮긴다] */
 const BOLD_W = 700;
-/* 지금 화면에서 쓸 «굵게» — 테마가 이미 그보다 굵으면 그 값을 쓴다 */
-const boldW = () => Math.max(BOLD_W, Number(fmt().weight) || 400);
+/* 본문 굵기 — 저장된 값을 그 글꼴의 눈금에 맞춰 그린다. 글꼴을 바꾸면 예전 굵기가 새
+   글꼴에 없을 수 있는데, 그대로 그리면 화면은 브라우저가 대신 고른 굵기(가짜 볼드일 수도
+   있다)로 나오고 설정 패널은 «보통» 을 가리켜 둘이 어긋난다 [snapWeight]. */
+const textW = () => { const f = fmt(); return snapWeight(f.font, Number(f.weight) || 400); };
+/* 지금 화면에서 쓸 «굵게» — 그 글꼴의 «굵게» 눈금을 따른다 [weightSteps].
+   굵기가 하나뿐인 글꼴(검은고딕·조선신명조 …)에서는 눈금에 «굵게» 가 없다. 그때는
+   BOLD_W 로 두어 브라우저가 그리는 가짜 볼드라도 남긴다 — 굵게 단추를 눌렀는데 아무
+   일도 안 일어나는 것보다 낫다.
+   테마가 이미 그보다 굵으면 테마 굵기를 쓴다 — 굵게를 걸었는데 둘레보다 가늘어지는
+   일이 없어야 한다. */
+function boldW() {
+  const f = fmt();
+  const steps = weightSteps(f.font);
+  const bold = steps.length > 1 ? steps[1][0] : BOLD_W;
+  return Math.max(bold, textW());
+}
 const SIZE_LV = { '-1': .85, '0': 1, '1': 1.1 };
 const SIZE_LV_UI = [[-1, '작게', 's'], [0, '기본', 'm'], [1, '크게', 'l']];
 
@@ -3336,7 +3350,7 @@ function renderBlock(b, th, f, prev, next) {
   if (b.type === 'music') { wrap.appendChild(musicNode(b, th)); return wrap; }
   const style = t => {
     t.style.textAlign = b.align || f.align;
-    t.style.fontWeight = b.bold ? boldW() : f.weight;
+    t.style.fontWeight = b.bold ? boldW() : textW();
     if (b.italic) t.style.fontStyle = 'italic';
     const deco = [b.underline && 'underline', b.strike && 'line-through'].filter(Boolean).join(' ');
     if (deco) t.style.textDecoration = deco;
@@ -3442,7 +3456,7 @@ function renderBlock(b, th, f, prev, next) {
        본문 글자색은 캔버스 배경 위에서 읽히도록 고른 값이라 그럴 일이 없다. */
     if (nameEl) {
       nameEl.style.color = th.fg;
-      nameEl.style.fontWeight = b.bold ? boldW() : f.weight;
+      nameEl.style.fontWeight = b.bold ? boldW() : textW();
     }
     style(bub);
     /* 인용은 세로선을 세우고 그 옆에 글을 흘리는 꼴이다. 글 정렬을 따라 반대쪽으로 밀면
@@ -3647,7 +3661,7 @@ function headerNode(th) {
     else av.appendChild(hdIcon('person'));
     mid.appendChild(av);
     const hdName = Object.assign(el('div', 'hd-name'), { textContent: title });
-    hdName.style.fontWeight = fmt().weight;   /* 캐릭터 이름과 같은 굵기 [.who] */
+    hdName.style.fontWeight = textW();        /* 캐릭터 이름과 같은 굵기 [.who] */
     mid.appendChild(hdName);
     right.appendChild(hdIcon('video'));
   } else {
@@ -5991,12 +6005,21 @@ function fontControls(g, up, light) {
   /* 글꼴 · 굵기 — 한 줄 */
   const r1 = el('div', 'grid2'); r1.style.alignItems = 'end';
   const f1 = el('div'); f1.appendChild(el('span', 'lab', '글꼴'));
-  f1.appendChild(fontSelect(g.font, v => { g.font = v; clearBlockOwn('font', '글꼴'); up(); }));
+  f1.appendChild(fontSelect(g.font, v => {
+    g.font = v;
+    /* 글꼴마다 가진 굵기가 다르다 — 새 글꼴에 없는 굵기가 그대로 남으면 어느 단추도
+       안 켜지고, 화면은 그 글꼴이 대신 고른 굵기로 그려져 둘이 어긋난다 [weightSteps]. */
+    g.weight = snapWeight(v, g.weight);
+    clearBlockOwn('font', '글꼴'); up();
+  }));
   const f2 = el('div'); f2.appendChild(el('span', 'lab', '굵기'));
-  /* 눈금은 «글꼴이 실제로 가진 굵기» 다 [BOLD_W 의 주석]. 400/500/600 으로 좁혀 두었더니
-     500 은 400 으로, 600 은 700 으로 그려져 «굵게» 가 «보통» 과 똑같아 보였다. */
-  f2.appendChild(segment([[400, '보통'], [700, '굵게'], [800, '아주 굵게']], g.weight,
+  /* 눈금은 «이 글꼴이 실제로 가진 굵기» 다 [weightSteps]. 400/700/800 으로 못 박아 두면
+     그 굵기가 없는 글꼴에서는 눌러도 아무 일이 안 일어난다 — 가진 만큼만 내놓는다. */
+  const steps = weightSteps(g.font);
+  f2.appendChild(segment(steps, snapWeight(g.font, g.weight),
     v => { g.weight = +v; clearBlockOwn('bold', '굵기'); up(); }));
+  /* 굵기가 하나뿐인 글꼴은 «왜 단추가 하나뿐인가» 를 적어 준다 */
+  if (steps.length < 2) f2.appendChild(el('span', 'lab-sub', '이 글꼴은 굵기가 하나뿐입니다'));
   r1.append(f1, f2); sec.appendChild(r1);
 
   /* 글 정렬 */
@@ -6829,22 +6852,69 @@ const FONTS = [
      동적 서브셋 CSS 는 굵기 9종 × 92구간 = 828개 @font-face 로 쪼개져 있어, 한글 한 문단이면
      굵기 하나당 92조각이 전부 필요해진다 — 다 심으면 수 MB, 잘라 심으면 그 글자만 대체 글꼴이 된다.
      정적 서브셋은 굵기당 파일 하나(약 267KB)로 KS X 1001 한글을 통째로 덮는다. */
-  { g: '고딕', name: 'Pretendard',        label: '프리텐다드',      css: PRETENDARD_CSS, embedCss: PRETENDARD_EMBED },
-  { g: '고딕', name: 'Noto Sans KR',      label: '본고딕',          css: 'https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;800&display=swap' },
-  { g: '고딕', name: 'IBM Plex Sans KR',  label: 'IBM 플렉스 산스', css: 'https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;700&display=swap' },
-  { g: '고딕', name: 'Nanum Gothic',      label: '나눔고딕',        css: 'https://fonts.googleapis.com/css2?family=Nanum+Gothic:wght@400;700;800&display=swap' },
-  { g: '고딕', name: 'KoPubWorld Dotum',  label: '코펍월드돋움',    css: 'font/web/kopubworld-dotum.css', local: true },
-  { g: '명조', name: 'Nanum Myeongjo',    label: '나눔명조',        css: 'https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@400;700;800&display=swap' },
-  { g: '명조', name: 'Noto Serif KR',     label: '본명조',          css: 'https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;700;800&display=swap' },
-  { g: '명조', name: 'Chosun Myungjo',    label: '조선일보명조',    css: 'font/web/chosun-myungjo.css',   local: true },
-  { g: '명조', name: 'Chosun Sinmyungjo', label: '조선신명조',      css: 'font/web/chosun-sinmyungjo.css', local: true },
-  { g: '명조', name: 'Bookk Myungjo',     label: '부크크명조',      css: 'font/web/bookk-myungjo.css',    local: true },
-  { g: '도트', name: 'Mona12',            label: '모나12',          css: 'https://cdn.jsdelivr.net/gh/MonadABXY/mona-font/web/mona.css', mono: true },
+  /* [w] 그 글꼴이 «실제로» 가진 굵기다. 굵기 눈금은 여기서 뽑는다 [weightSteps] —
+     글꼴마다 가진 굵기가 다른데 눈금을 400/700/800 하나로 못 박아 두면, 없는 굵기를 고른
+     사람에게는 아무 일도 안 일어난다(CSS 가 가진 것 중 가까운 것으로 대신 그린다).
+     여기 적은 값은 아래 css 가 «실제로 받아 오는» 굵기와 같아야 한다. */
+  { g: '고딕', name: 'Pretendard',        label: '프리텐다드',      css: PRETENDARD_CSS, embedCss: PRETENDARD_EMBED,
+    w: [100, 200, 300, 400, 500, 600, 700, 800, 900] },
+  { g: '고딕', name: 'Noto Sans KR',      label: '본고딕',          css: 'https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;800&display=swap',
+    w: [400, 700, 800] },
+  { g: '고딕', name: 'IBM Plex Sans KR',  label: 'IBM 플렉스 산스', css: 'https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;700&display=swap',
+    w: [400, 700] },
+  { g: '고딕', name: 'Gothic A1',         label: '고딕 A1',         css: 'https://fonts.googleapis.com/css2?family=Gothic+A1:wght@400;500;700;800;900&display=swap',
+    w: [400, 500, 700, 800, 900] },
+  { g: '고딕', name: 'Nanum Gothic',      label: '나눔고딕',        css: 'https://fonts.googleapis.com/css2?family=Nanum+Gothic:wght@400;700;800&display=swap',
+    w: [400, 700, 800] },
+  { g: '고딕', name: 'NanumSquare Neo',   label: '나눔스퀘어 네오', css: 'font/web/nanum-square-neo.css',
+    w: [300, 400, 700, 800, 900] },
+  { g: '고딕', name: 'KoPubWorld Dotum',  label: '코펍월드돋움',    css: 'font/web/kopubworld-dotum.css', local: true,
+    w: [400, 700, 800] },
+  { g: '명조', name: 'Nanum Myeongjo',    label: '나눔명조',        css: 'https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@400;700;800&display=swap',
+    w: [400, 700, 800] },
+  { g: '명조', name: 'Noto Serif KR',     label: '본명조',          css: 'https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;700;800&display=swap',
+    w: [400, 700, 800] },
+  { g: '명조', name: 'MaruBuri',          label: '마루 부리',       css: 'font/web/maru-buri.css',
+    w: [200, 300, 400, 600, 700] },
+  { g: '명조', name: 'Gowun Batang',      label: '고운바탕',        css: 'https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&display=swap',
+    w: [400, 700] },
+  { g: '명조', name: 'Chosun Myungjo',    label: '조선일보명조',    css: 'font/web/chosun-myungjo.css',   local: true, w: [400, 700] },
+  { g: '명조', name: 'Chosun Sinmyungjo', label: '조선신명조',      css: 'font/web/chosun-sinmyungjo.css', local: true, w: [400] },
+  { g: '명조', name: 'Bookk Myungjo',     label: '부크크명조',      css: 'font/web/bookk-myungjo.css',    local: true, w: [400, 700] },
+  /* 제목·손글씨는 대개 굵기가 하나뿐이다 — 성격이 굵기에 이미 담겨 있어 원래 그렇게 쓴다.
+     굵기 눈금도 그 글꼴이 가진 만큼만 뜬다 [weightSteps]. */
+  { g: '제목', name: 'Black Han Sans',    label: '검은고딕',        css: 'https://fonts.googleapis.com/css2?family=Black+Han+Sans&display=swap',
+    w: [400] },
+  { g: '손글씨', name: 'Dongle',          label: '동글',            css: 'https://fonts.googleapis.com/css2?family=Dongle:wght@300;400;700&display=swap',
+    w: [300, 400, 700] },
+  { g: '손글씨', name: 'Gaegu',           label: '개구쟁이',        css: 'https://fonts.googleapis.com/css2?family=Gaegu:wght@300;400;700&display=swap',
+    w: [300, 400, 700] },
+  { g: '도트', name: 'Mona12',            label: '모나12',          css: 'https://cdn.jsdelivr.net/gh/MonadABXY/mona-font/web/mona.css', mono: true,
+    w: [400, 700] },
   /* 배포판 galmuri.css 를 직접 쓰지 않는다 — 한 @font-face 안에 woff2 와 ttf 를 같이 적어서
      저장 임베드가 블록 안 url 을 전부 인라인하며 5MB 짜리 ttf 까지 함께 박아 버린다.
      woff2 하나만 가리키는 CSS 를 따로 두고 파일은 jsDelivr 에서 그대로 받는다. */
-  { g: '도트', name: 'Galmuri11',         label: '갈무리11',        css: 'font/web/galmuri.css', mono: true }
+  { g: '도트', name: 'Galmuri11',         label: '갈무리11',        css: 'font/web/galmuri.css', mono: true, w: [400, 700] }
 ];
+/* 그 글꼴에서 «보통 · 굵게 · 아주 굵게» 로 쓸 굵기를 고른다.
+   가진 굵기가 400 하나뿐이면 단추도 하나만 뜬다 — 없는 굵기를 고르게 해 두면 눌러도
+   아무 일이 안 일어나고, 그것이 «굵게가 안 먹는다» 로 보였다.
+   [고르는 법] 400 이상만 본다. 맨 처음이 «보통», 맨 끝이 «아주 굵게», 그 사이에서 700 에
+   가장 가까운 것이 «굵게» 다. 700 을 기준으로 삼는 이유는 어느 글꼴에서든 그 언저리가
+   «굵다» 로 읽히는 자리이기 때문이다. */
+function weightSteps(name) {
+  const a = [...new Set((fontOf(name).w || [400, 700, 800]).filter(w => w >= 400))].sort((x, y) => x - y);
+  if (a.length <= 1) return [[a[0] || 400, '보통']];
+  if (a.length === 2) return [[a[0], '보통'], [a[1], '굵게']];
+  const mid = a.slice(1, -1).reduce((best, w) => Math.abs(w - 700) < Math.abs(best - 700) ? w : best, a[1]);
+  return [[a[0], '보통'], [mid, '굵게'], [a[a.length - 1], '아주 굵게']];
+}
+/* 지금 값에 가장 가까운 눈금 — 글꼴을 바꾸면 예전 굵기가 새 글꼴에 없을 수 있다.
+   그때 아무 단추도 안 켜져 있으면 «지금 뭐가 걸려 있는지» 를 읽을 길이 없다. */
+const snapWeight = (name, w) => {
+  const steps = weightSteps(name);
+  return steps.reduce((best, [v]) => Math.abs(v - w) < Math.abs(best - w) ? v : best, steps[0][0]);
+};
 const fontOf = n => FONTS.find(f => f.name === n) || FONTS[0];
 /* 상대경로 CSS 는 지금 문서 주소를 기준으로 풀어 둔다. 저장 임베드가 @font-face 안의
    url 을 다시 계산할 때 기준이 상대경로면 URL() 이 던져 버려 인라인이 통째로 실패한다. */

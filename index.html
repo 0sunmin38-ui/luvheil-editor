@@ -4360,15 +4360,21 @@ function renderComposerHint(b, deck) {
   if (deck) return;
   const txt = el('span', 'txt');
   if (b) {
-    const own = BLOCK_OWN.filter(k => b[k] != null && b[k] !== false && b[k] !== 0);
+    /* 블록 값과 글 속 마커를 함께 센다 — 둘 다 «이 블록만 따로» 인 것은 마찬가지다 */
+    const own = BLOCK_OWN.filter(k => b[k] != null && b[k] !== false && b[k] !== 0)
+      .map(k => BLOCK_OWN_NAME[k])
+      .concat(HAS_TEXT.includes(b.type || 'text') ? inlineOwn(b.text) : []);
     txt.textContent = own.length
-      ? '이 블록만 따로 지정 — ' + own.map(k => BLOCK_OWN_NAME[k]).join(' · ')
+      ? '이 블록만 따로 지정 — ' + [...new Set(own)].join(' · ')
       : '고른 블록 하나만 고칩니다 · 도구 › 서식 설정은 전체 기본값입니다';
     box.appendChild(txt);
     if (own.length) {
       const clr = el('button', 'btn btn-quiet', '전체 설정 따르기');
       clr.onclick = () => {
         BLOCK_OWN.forEach(k => { delete b[k]; });
+        /* 글 속 마커도 함께 푼다 — 안 그러면 블록 색은 풀리는데 글 일부에 준 색만 남아
+           «눌렀는데 색이 그대로» 가 된다. 작성창에도 곧바로 비친다. */
+        if (HAS_TEXT.includes(b.type || 'text')) { b.text = stripInline(b.text); syncComposer(b); }
         save(); render(); toast('이 블록도 전체 설정을 따릅니다');
       };
       box.appendChild(clr);
@@ -4525,6 +4531,37 @@ const BLOCK_OWN_NAME = {
   align: '정렬', font: '글꼴', bold: '굵게', italic: '기울임',
   underline: '밑줄', strike: '취소선', color: '글자색', ann: '주석'
 };
+/* 서식이 사는 자리는 둘이다 — 블록 값[BLOCK_OWN]과 글 속 마커[applyInline].
+   블록 전체에 색을 주면 b.color 로 들어가지만, 글 «일부» 를 골라 준 색은 글 안에
+   [#RRGGBB]…[/] 로 들어간다. 「전체 설정 따르기」가 블록 값만 지우던 탓에, 일부를 골라
+   준 색은 눌러도 그대로 남았다 — «가끔 색이 안 풀린다» 가 이것이다.
+   여기 든 것은 그 마커들이다. 여는 짝만 찾으면 된다(닫는 짝은 늘 함께 온다). */
+const INLINE_OWN = [
+  ['글 속 색',   /(?<!==)\[#[0-9A-Fa-f]{6}\]/],
+  ['형광펜',     /==(?:\[#[0-9A-Fa-f]{6}\])?/],
+  ['글 속 굵게', /\*\*/],
+  ['기울임',     /(?<!\*)\*(?!\*)/],
+  ['밑줄',       /\+\+/],
+  ['취소선',     /~~/],
+  ['글자 크기',  /\[[+-]\]/],
+  ['주석',       /\[[\^_]\]/]
+];
+/* 이 글에 걸려 있는 «글 속 서식» 의 이름들 */
+const inlineOwn = text => INLINE_OWN.filter(([, re]) => re.test(String(text || ''))).map(([n]) => n);
+/* 글 속 마커를 전부 걷어낸다 — 감싸던 마커만 빠지고 글자는 그대로 남는다.
+   붙여넣은 글을 정리할 때 쓰는 것과 같은 목록이다 [JUNK_MARKERS]. */
+const stripInline = text => JUNK_MARKERS.reduce((t, re) => t.replace(re, ''), String(text || ''));
+/* 글자색 마커만 걷는다 — 형광펜은 남긴다.
+   형광펜의 색은 ==[#RRGGBB] 꼴이라 앞에 == 이 붙어 있다. 그 짝은 건드리지 않고,
+   그 «안에» 따로 걸린 글자색만 푼다 [==[#바탕][#글자]…[/]== 는 바탕만 남는다]. */
+const stripColorMarks = text => String(text || '')
+  .replace(/(?<!==)\[#[0-9A-Fa-f]{6}\]/g, '').replace(/\[\/\]/g, '');
+/* 블록의 글을 고쳤을 때 작성창도 함께 되맞춘다 — 그 블록을 열어 둔 채라면 화면과 값이
+   어긋나 보이고, 다음에 «캔버스에 올리기» 를 누르면 옛 글이 도로 덮어쓴다. */
+function syncComposer(b) {
+  const ta = $('#ta');
+  if (ta && b && selBlock() === b && HAS_TEXT.includes(b.type || 'text')) ta.value = b.text;
+}
 
 function renderFormat() {
   const wrap = $('#formatWrap');
@@ -4678,7 +4715,11 @@ function renderFormat() {
   g2.appendChild(colorBtn('A', S.colors.text, '글자 색', v => {
     if (v == null) {                       /* 기본값 — 테마의 글자색을 그대로 따라간다 */
       if (hasSel()) { formatSelection(() => clearRich('color')); return; }
-      else if (b) delete b.color;
+      /* 고른 조각이 없으면 «이 블록 전부» 다 — 블록 값과 글 속 색을 함께 푼다.
+         예전에는 b.color 만 지워, 글 일부에 준 색은 그대로 남았다 [형광펜은 이미 이렇게 한다].
+         글에서 곧바로 뽑는다 — 작성창을 거쳐 되읽으면 그 칸이 비어 있을 때 글이 통째로 날아간다. */
+      else if (b) { b.text = stripColorMarks(b.text); syncComposer(b); delete b.color; }
+      else clearBlockOwn('color', '글자색');   /* 고른 블록이 없으면 전체를 고치는 중이다 */
     } else {
       S.colors.text = v;
       if (hasSel()) { formatSelection(() => applyRich('color', v)); return; }
@@ -6883,20 +6924,16 @@ const FONTS = [
   { g: '명조', name: 'Bookk Myungjo',     label: '부크크명조',      css: 'font/web/bookk-myungjo.css',    local: true, w: [400, 700] },
   /* 손글씨는 대개 굵기가 하나뿐이다 — 성격이 굵기에 이미 획에 담겨 있어 원래 그렇게 쓴다.
      굵기 눈금도 그 글꼴이 가진 만큼만 뜬다 [weightSteps].
-     [파일이 무겁다] 나눔손글씨는 한 벌이 3~4MB 다(온글잎은 0.6MB 안팎). 화면에 처음 뜰 때도,
-     이미지로 저장할 때 그 글꼴을 통째로 심을 때도[oneFontEmbedCSS] 그만큼 오래 걸린다.
-     그래서 글꼴마다 CSS 를 따로 둔다 — 한 파일에 몰아 두면 고르지도 않은 글꼴까지 함께 심긴다. */
-  { g: '손글씨', name: 'Gaegu',              label: '개구쟁이',        css: 'https://fonts.googleapis.com/css2?family=Gaegu:wght@300;400;700&display=swap',
-    w: [300, 400, 700] },
+     [파일이 무겁다] 한글 11,172자를 손으로 다 그린 글꼴이라 한 벌이 3.0~3.6MB 다 — 이 저장소가
+     여태 쓰던 가장 큰 글꼴(코펍월드돋움 굵기 하나 0.3MB)의 열 배가 넘는다. 처음 고를 때
+     0.7~1.0초쯤 받고(한 번 받으면 브라우저가 물고 있는다), 이미지로 저장할 때 그 글꼴을 통째로
+     심느라[oneFontEmbedCSS] 한 장 그리는 데 13ms 에서 90ms 로 는다.
+     그래서 글꼴마다 CSS 를 따로 둔다 — 한 파일에 몰아 두면 고르지도 않은 글꼴까지 함께 심겨
+     저장본 하나에 수십 MB 가 실린다. */
   { g: '손글씨', name: 'Ownglyph Wiseelist', label: '온글잎 현명한목록', css: 'font/web/hand-wiseelist.css', w: [400] },
   { g: '손글씨', name: 'Nanum Kyuri',        label: '규리의 일기',      css: 'font/web/hand-kyuri.css',     w: [400] },
-  { g: '손글씨', name: 'Nanum Appa',         label: '아빠글씨',        css: 'font/web/hand-appa.css',      w: [400] },
   { g: '손글씨', name: 'Nanum Summer',       label: '여름편지',        css: 'font/web/hand-summer.css',    w: [400] },
-  { g: '손글씨', name: 'Nanum Mongdol',      label: '몽돌',            css: 'font/web/hand-mongdol.css',   w: [400] },
-  { g: '손글씨', name: 'Nanum Kimyooyee',    label: '김유이체',        css: 'font/web/hand-kimyooyee.css', w: [400] },
   { g: '손글씨', name: 'Nanum Chulpil',      label: '철필글씨',        css: 'font/web/hand-chulpil.css',   w: [400] },
-  { g: '손글씨', name: 'Nanum Grandma',      label: '외할머니글씨',     css: 'font/web/hand-grandma.css',   w: [400] },
-  { g: '손글씨', name: 'Nanum Mujinjang',    label: '무진장 흑돼지',    css: 'font/web/hand-mujinjang.css', w: [400] },
   { g: '도트', name: 'Mona12',            label: '모나12',          css: 'https://cdn.jsdelivr.net/gh/MonadABXY/mona-font/web/mona.css', mono: true,
     w: [400, 700] },
   /* 배포판 galmuri.css 를 직접 쓰지 않는다 — 한 @font-face 안에 woff2 와 ttf 를 같이 적어서

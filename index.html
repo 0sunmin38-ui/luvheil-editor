@@ -2065,10 +2065,14 @@ function applyInline(t) {
   /* 굵게 안에 기울임이 들어가면 htmlToMarkup 이 ***문자*** 를 만든다.
      단일 * / ** 변환보다 먼저 처리해야 마커가 화면에 남지 않는다. */
   t = t.replace(/\*\*\*([^*]+)\*\*\*/g, '<b><i>$1</i></b>');
-  t = t.replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
+  /* 몸통에 «다른» 마커가 들어올 수 있다 — 굵은 글 한가운데만 기울이면 **가나*다라*바사**
+     가 되고, 밑줄 안에 크기 마커가 들면 ++[+]가나[/+]++ 가 된다. 몸통에서 제 마커 글자를
+     통째로 막아 두면([^*]+ · [^+]+) 그런 짝이 아예 안 읽혀, 화면에 ** 이 글자 그대로
+     튀어나왔다. 제 짝을 만날 때까지만 게으르게 먹는다 — 겹친 서식이 그대로 살아난다. */
+  t = t.replace(/\*\*([\s\S]+?)\*\*/g, '<b>$1</b>');
   t = t.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '<i>$1</i>');
   t = t.replace(/~~([^~]+)~~/g, '<s>$1</s>');
-  t = t.replace(/\+\+([^+]+)\+\+/g, '<u>$1</u>');
+  t = t.replace(/\+\+([\s\S]+?)\+\+/g, '<u>$1</u>');
   t = t.replace(/==(?:\[#([0-9A-Fa-f]{6})\])?([\s\S]+?)==/g,
     (w, h, b) => `<mark style="background:${h ? '#' + h.toUpperCase() : S.colors.highlight};color:inherit">${b}</mark>`);
   t = t.replace(/\[#([0-9A-Fa-f]{6})\]([\s\S]*?)\[\/\]/g, '<span style="color:#$1">$2</span>');
@@ -2440,7 +2444,19 @@ const hexOf = v => {
 /* 마커 → 편집용 HTML. 캔버스와 같은 변환기를 써서 보이는 모습이 캔버스와 같다. */
 const markupToHtml = t => applyInline(String(t)).replace(/\n/g, '<br>');
 
-/* 편집용 HTML → 마커. applyInline 이 만든 태그를 그대로 되읽는다. */
+/* 편집용 HTML → 마커. applyInline 이 만든 태그를 그대로 되읽는다.
+   [주의] 한 태그가 서식 하나만 지고 있다는 법이 없다. 브라우저의 서식 명령은 고른 자리가
+   이미 있는 태그와 딱 맞아떨어지면 새 태그를 만들지 않고 «그 태그에 얹는다» — 굵은 글을
+   통째로 골라 색을 주면 <b style="color:…"> 가 되고, 형광펜 위에 색을 주면
+   <mark style="background:…;color:…"> 가 되며, 굵은 글에 형광펜을 씌우면
+   <b style="background-color:…"> 가 된다.
+   예전에는 먼저 걸린 하나만 읽고 돌아서서 나머지를 통째로 버렸다. 그 마커로 작성창을
+   다시 그리므로[reflowComposer] 화면에서도 함께 지워졌다 — «색이 가끔 안 먹는다» 와
+   «형광펜을 씌우면 굵게가 풀린다» 가 둘 다 이것이다. 부분만 고르면 브라우저가 안쪽에
+   새 <span> 을 만들어 멀쩡했으니, «가끔» 으로 보인 것도 그래서다.
+   그래서 걸린 것을 «모두» 읽어 안쪽부터 차례로 감싼다. 감싸는 차례는 applyInline 이
+   되읽을 수 있는 차례다 — 기울임(*[^*]+*)과 취소선(~~[^~]+~~)은 제 마커 글자를 몸통에
+   못 품으므로 그 둘이 안쪽, 굵게가 바깥이어야 하고, 크기·형광펜은 다시 그 바깥이다. */
 function htmlToMarkup(node) {
   let out = '';
   node.childNodes.forEach(ch => {
@@ -2448,29 +2464,25 @@ function htmlToMarkup(node) {
     if (ch.nodeType !== 1) return;
     const tag = ch.tagName.toLowerCase();
     if (tag === 'br') { out += '\n'; return; }
-    const inner = htmlToMarkup(ch), st = ch.getAttribute('style') || '';
-    if (tag === 'mark') { const h = hexOf(ch.style.background || ch.style.backgroundColor); out += h ? `==[#${h}]${inner}==` : `==${inner}==`; return; }
-    /* iOS Safari의 hiliteColor/backColor는 mark 대신 span/font의
-       background-color 인라인 스타일로 생성될 수 있다. */
+    const st = ch.getAttribute('style') || '', cls = ch.classList;
+    let s = htmlToMarkup(ch);
+    /* iOS Safari 의 hiliteColor/backColor 는 mark 가 아니라 span·font 의 배경으로 나온다 */
     const bg = hexOf(ch.style.background || ch.style.backgroundColor || '');
-    const inlineCol = hexOf(ch.style.color || ch.getAttribute('color') || '');
-    if (bg && inlineCol) {
-      out += `==[#${bg}][#${inlineCol}]${inner}[/]==`;
-      return;
-    }
-    if (bg) { out += `==[#${bg}]${inner}==`; return; }
-    if (ch.classList && ch.classList.contains('sz-up')) { out += `[+]${inner}[/+]`; return; }
-    if (ch.classList && ch.classList.contains('sz-dn')) { out += `[-]${inner}[/-]`; return; }
-    if (tag === 'sup') { out += `[^]${inner}[/^]`; return; }
-    if (tag === 'sub') { out += `[_]${inner}[/_]`; return; }
-    if (tag === 'b' || tag === 'strong' || /font-weight:\s*(bold|[6-9]00)/.test(st)) { out += `**${inner}**`; return; }
-    if (tag === 'i' || tag === 'em' || /font-style:\s*italic/.test(st)) { out += `*${inner}*`; return; }
-    if (tag === 's' || tag === 'strike' || tag === 'del' || /line-through/.test(st)) { out += `~~${inner}~~`; return; }
-    if (tag === 'u' || /underline/.test(st)) { out += `++${inner}++`; return; }
+    /* 형광펜이 스스로 적어 두는 color:inherit 은 색이 아니다 — hexOf 가 빈 값으로 돌려준다 */
     const col = hexOf(ch.style.color || ch.getAttribute('color') || '');
-    if (col) { out += `[#${col}]${inner}[/]`; return; }
-    if (tag === 'div' || tag === 'p') { if (out && !out.endsWith('\n')) out += '\n'; out += inner; return; }
-    out += inner;
+    if (col) s = `[#${col}]${s}[/]`;
+    if (tag === 'sup') s = `[^]${s}[/^]`;
+    else if (tag === 'sub') s = `[_]${s}[/_]`;
+    if (tag === 'u' || /underline/.test(st)) s = `++${s}++`;
+    if (tag === 's' || tag === 'strike' || tag === 'del' || /line-through/.test(st)) s = `~~${s}~~`;
+    if (tag === 'i' || tag === 'em' || /font-style:\s*italic/.test(st)) s = `*${s}*`;
+    if (tag === 'b' || tag === 'strong' || /font-weight:\s*(bold|[6-9]00)/.test(st)) s = `**${s}**`;
+    if (cls && cls.contains('sz-up')) s = `[+]${s}[/+]`;
+    else if (cls && cls.contains('sz-dn')) s = `[-]${s}[/-]`;
+    if (tag === 'mark' || bg) s = bg ? `==[#${bg}]${s}==` : `==${s}==`;
+    /* div·p 는 줄을 바꾼다 — 서식이 함께 걸려 있어도 그 몫은 따로 챙긴다 */
+    if ((tag === 'div' || tag === 'p') && out && !out.endsWith('\n')) out += '\n';
+    out += s;
   });
   return out;
 }
@@ -2773,6 +2785,20 @@ function normalizeComposerFontSizes() {
   });
 }
 
+/* 형광펜 위에 형광펜을 다시 씌우면 크롬은 <mark> 를 겹치는 대신, 그 <mark> 에서 배경색만
+   빼내 안쪽 태그로 옮긴다 — 색을 잃은 껍데기 <mark> 와 색을 새로 얻은 안쪽이 함께 남는다.
+   마커에는 겹친 형광펜을 적을 자리가 없어(== 안의 == 는 되읽히지 않는다) 그대로 두면
+   ====[#FFE79A] 같은 글자가 화면에 그대로 튀어나왔다.
+   우리가 그리는 <mark> 는 늘 배경색을 달고 나오므로[applyInline], 색이 없는데 안쪽이
+   색을 들고 있는 <mark> 는 그 껍데기뿐이다 — 그것만 걷는다. */
+function dropEmptyMarks(root) {
+  const painted = e => !!hexOf(e.style.background || e.style.backgroundColor);
+  [...root.querySelectorAll('mark')].forEach(m => {
+    if (!m.parentNode || painted(m)) return;
+    if ([...m.querySelectorAll('*')].some(painted)) unwrapEl(m);
+  });
+}
+
 /* 서식을 벗기거나 겹칠 때 브라우저가 남기는 빈 껍데기를 걷어낸다.
    선택 영역을 떼어 내면 <b>…</b> 의 껍데기가 제자리에 남는데, 그대로 되읽으면 글 속에
    **** · [#FF0000][/] 같은 빈 마커가 그대로 튀어나온다. 줄바꿈과 그림은 글자가 없어도
@@ -2794,6 +2820,7 @@ function reflowComposer(saved) {
   const ta = $('#ta');
   if (!ta) return '';
   normalizeComposerFontSizes();
+  dropEmptyMarks(ta);
   pruneEmptyFormat(ta);
   const markup = ta.value;
   /* 마커에는 그림을 담을 자리가 없다 — 어쩌다 그림이 끼어든 작성창은 다시 그리지 않는다 */

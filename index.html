@@ -166,10 +166,12 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,
 .blk.row-off{display:none}
 /* 글 조각 하나만 키우고 줄이는 서식 [RICH.szUp · applyInline]. em 이라 블록의 크기
    단계[SIZE_LV]나 테마 글자 크기 위에 겹쳐 걸린다. 작성창과 캔버스가 같은 값을 쓴다. */
-/* 인라인 **굵게** 는 <b> 로 그려진다. 브라우저 기본값(700)을 그대로 두면 볼드 단추(500)와
-   같은 «굵게» 인데 굵기가 달라진다 — 한 눈금으로 맞춘다 [BOLD_W]. */
+/* 인라인 **굵게** 는 <b> 로 그려진다. 브라우저 기본값(700)을 그대로 두면 볼드 단추와
+   같은 «굵게» 인데 굵기가 달라진다 — 한 눈금으로 맞춘다 [BOLD_W · boldW].
+   값은 렌더가 --bold-w 로 내려 준다. 테마가 이미 그보다 굵으면 그 굵기를 쓴다 —
+   굵게를 걸었는데 둘레보다 가늘어지는 일이 없어야 한다. */
 .blk-text b, .blk-text strong, .bub b, .bub strong,
-.blk-footer b, .blk-footer strong, #ta b, #ta strong{font-weight:500}
+.blk-footer b, .blk-footer strong, #ta b, #ta strong{font-weight:var(--bold-w,700)}
 .sz-up{font-size:1.1em}
 .sz-dn{font-size:.85em}
 .blk-text{white-space:pre-wrap;word-break:keep-all;overflow-wrap:anywhere}
@@ -237,9 +239,9 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,
    이 두 줄만은 카드의 em 을 안 탄다 — [musicNode] 가 본문과 같은 크기를 px 로 박아 준다.
    그래서 «크기» 손잡이로 카드를 줄이거나 키워도 제목·가수의 글자 크기는 그대로다.
    (카드 · 하트 · 진행바 · 재생 단추는 여태처럼 em 을 따라 함께 커지고 작아진다.) */
-/* 굵기는 이 앱의 «굵게» 눈금을 따른다 [BOLD_W] — 700 으로 못 박아 두면 볼드 단추(500)와
-   같은 «굵게» 인데 이 카드만 굵다. */
-.mu-title{font-weight:var(--mu-w,500);font-size:var(--mu-title,1.05em);letter-spacing:-.012em;line-height:1.2}
+/* 굵기는 이 앱의 «굵게» 눈금을 따른다 [BOLD_W] — 값을 따로 못 박아 두면 볼드 단추와
+   같은 «굵게» 인데 이 카드만 다르게 굵다. 값은 [musicNode] 가 --mu-w 로 내려 준다. */
+.mu-title{font-weight:var(--mu-w,700);font-size:var(--mu-title,1.05em);letter-spacing:-.012em;line-height:1.2}
 /* 가수는 제목과 «같은 색을 흐린 것» 이다 — 색을 따로 고르지 않고 흐리기만 고른다 */
 .mu-artist{font-size:var(--mu-artist,.85em);opacity:var(--mu-artist-o,.77);
   margin-top:var(--mu-gap,.05em);line-height:1.2}
@@ -1865,7 +1867,7 @@ const S = {
 
 const KEY = 'chat-excerpt/v1';
 /* 기본값을 바꾸면 올린다. 저장본의 판이 낮으면 내용은 지키고 기본값만 새로 잡는다. */
-const SCHEMA = 6;
+const SCHEMA = 7;
 /* 제작자 서명은 늘 블록 목록의 맨 끝이어야 한다.
    CSS 의 margin-top:auto 는 '자기 뒤에 아무것도 없을 때' 만 바닥에 붙는다. 서명을 넣은 뒤
    글을 더 쓰면 새 블록이 서명 뒤로 붙어 서명이 가운데로 밀려 올라갔다.
@@ -1999,6 +2001,14 @@ function load() {
      세그먼트에서 아무것도 안 골라진 것처럼 보이므로 «뜻» 을 지켜 한 칸씩 옮긴다. */
   if (loaded && (loaded.v || 0) < 6) {
     const WMAP = { 600: 500, 800: 600 };
+    if (WMAP[S.format.weight]) S.format.weight = WMAP[S.format.weight];
+    S.themes.forEach(t => { if (t.fmt && WMAP[t.fmt.weight]) t.fmt.weight = WMAP[t.fmt.weight]; });
+  }
+  /* 그 400/500/600 을 도로 400/700/800 으로 되돌린다. 500 을 가진 글꼴이 프리텐다드
+     하나뿐이라 [BOLD_W 의 주석], 좁힌 눈금에서는 «굵게» 가 어느 글꼴에서든 «보통» 과
+     똑같이 그려졌다. 뜻을 지켜 한 칸씩 도로 옮긴다. */
+  if (loaded && (loaded.v || 0) < 7) {
+    const WMAP = { 500: 700, 600: 800 };
     if (WMAP[S.format.weight]) S.format.weight = WMAP[S.format.weight];
     S.themes.forEach(t => { if (t.fmt && WMAP[t.fmt.weight]) t.fmt.weight = WMAP[t.fmt.weight]; });
   }
@@ -3155,6 +3165,9 @@ function renderCanvas() {
     cv.style.setProperty('--bub-r-me', r);
   }
   cv.style.fontFamily = fontStack(f.font);
+  /* 인라인 <b> 의 굵기 [.blk-text b]. 작성창은 캔버스 밖이라 문서 뿌리에 내려 둔다 —
+     캔버스와 작성창이 같은 «굵게» 를 보게 하는 것이 이 한 줄이다. */
+  document.documentElement.style.setProperty('--bold-w', String(boldW()));
 
   /* 단 나누기 — 두 갈래다. «내용 맞춤» 은 나눌 장이 없으니 CSS 단에 통째로 맡기고,
      «비율 지정» 은 장을 나누는 셈과 얽히므로 손으로 앉힌다 [renderPageMarks · placeFlow].
@@ -3292,8 +3305,14 @@ const sameRun = (a, b) => !!a && !!b && !!a.asBubble && !!b.asBubble
 
 /* 블록 하나의 글자 크기 단계. 테마의 본문 크기에 곱한다 — 절대값이 아니라 «한 단계»라
    테마 크기를 바꿔도 관계가 유지된다. 0(기본)은 아예 안 적어 예전 저장본과도 같다. */
-/* 볼드 한 단계의 굵기. 테마의 «굵게»(500)와 같은 값이라 서식과 테마가 같은 눈금을 쓴다. */
-const BOLD_W = 500;
+/* 볼드 한 단계의 굵기. 테마의 «굵게» 와 같은 값이라 서식과 테마가 같은 눈금을 쓴다.
+   [700 인 이유] 이 저장소가 쓰는 글꼴 12종 가운데 500 을 가진 것은 프리텐다드 하나뿐이다.
+   나머지 11종은 400/700(/800) 뿐이라, CSS 굵기 매칭 규칙상 500 을 달라고 하면 «아래쪽부터»
+   찾아 400 이 걸린다 — 굵게를 걸어도 보통과 한 획도 다르지 않았다. 어느 글꼴이든 가지고
+   있는 700 으로 맞춘다. [SCHEMA 7 에서 저장된 값도 함께 옮긴다] */
+const BOLD_W = 700;
+/* 지금 화면에서 쓸 «굵게» — 테마가 이미 그보다 굵으면 그 값을 쓴다 */
+const boldW = () => Math.max(BOLD_W, Number(fmt().weight) || 400);
 const SIZE_LV = { '-1': .85, '0': 1, '1': 1.1 };
 const SIZE_LV_UI = [[-1, '작게', 's'], [0, '기본', 'm'], [1, '크게', 'l']];
 
@@ -3317,7 +3336,7 @@ function renderBlock(b, th, f, prev, next) {
   if (b.type === 'music') { wrap.appendChild(musicNode(b, th)); return wrap; }
   const style = t => {
     t.style.textAlign = b.align || f.align;
-    t.style.fontWeight = b.bold ? BOLD_W : f.weight;
+    t.style.fontWeight = b.bold ? boldW() : f.weight;
     if (b.italic) t.style.fontStyle = 'italic';
     const deco = [b.underline && 'underline', b.strike && 'line-through'].filter(Boolean).join(' ');
     if (deco) t.style.textDecoration = deco;
@@ -3423,7 +3442,7 @@ function renderBlock(b, th, f, prev, next) {
        본문 글자색은 캔버스 배경 위에서 읽히도록 고른 값이라 그럴 일이 없다. */
     if (nameEl) {
       nameEl.style.color = th.fg;
-      nameEl.style.fontWeight = b.bold ? BOLD_W : f.weight;
+      nameEl.style.fontWeight = b.bold ? boldW() : f.weight;
     }
     style(bub);
     /* 인용은 세로선을 세우고 그 옆에 글을 흘리는 꼴이다. 글 정렬을 따라 반대쪽으로 밀면
@@ -3691,7 +3710,7 @@ function musicNode(b, th) {
   d.style.setProperty('--mu-title', tPx + 'px');
   d.style.setProperty('--mu-artist', +(tPx * MU_ARTIST_R).toFixed(2) + 'px');
   d.style.setProperty('--mu-gap', +(tPx * MU_GAP_R).toFixed(2) + 'px');
-  d.style.setProperty('--mu-w', String(BOLD_W));
+  d.style.setProperty('--mu-w', String(boldW()));
   /* 가수는 제목 색을 흐려 쓴다. 손잡이는 두지 않는다 — 제목과 «한 덩어리로 읽히는» 흐리기가
      하나뿐이라 고르게 해 봐야 고를 일이 없다 [MU_ARTIST_O]. */
   d.style.setProperty('--mu-artist-o', String(MU_ARTIST_O / 100));
@@ -4413,11 +4432,13 @@ function junkStrip(root, kinds) {
 /* 올리기 직전에 한 번 묻는다. 걸리는 것이 없으면 그냥 올린다 — 평소에는 아무 일도 없다. */
 function commitWithCleanup() {
   const ta = $('#ta');
-  /* HTML 블록만은 예외다 — 여기서는 태그도 따옴표도 «붙어 온 찌꺼기» 가 아니라 내용 그 자체다.
-     <div class="x"> 를 걷어내면 적은 글이 통째로 부서진다. 묻지 않고 그대로 올린다.
-     새로 적는 중[insertMode]과 이미 올린 것을 고치는 중[블록 종류] 둘 다 같은 자리다. */
-  const editing = selBlock();
-  if (S.ui.insertMode === 'html' || (editing && editing.type === 'html')) { commit(); return; }
+  /* 묻는 자리는 «밖에서 복사해 온 글이 처음 들어오는 곳» 하나뿐이다 — 곧 새 블록을 적는
+     기본 작성창이다. 이미 올린 블록을 고치는 중에는 묻지 않는다: 그 글은 올릴 때 한 번
+     걸러졌고, 고치는 중에 또 물으면 일부러 남겨 둔 따옴표·별표까지 다시 걷어내게 된다. */
+  if (selBlock()) { commit(); return; }
+  /* HTML 블록도 예외다 — 여기서는 태그도 따옴표도 «붙어 온 찌꺼기» 가 아니라 내용 그 자체다.
+     <div class="x"> 를 걷어내면 적은 글이 통째로 부서진다. 묻지 않고 그대로 올린다. */
+  if (S.ui.insertMode === 'html') { commit(); return; }
   const hit = junkScan(ta);
   const found = JUNK_KIND.filter(([k]) => hit[k] > 0);
   if (!found.length) { commit(); return; }
@@ -5972,7 +5993,9 @@ function fontControls(g, up, light) {
   const f1 = el('div'); f1.appendChild(el('span', 'lab', '글꼴'));
   f1.appendChild(fontSelect(g.font, v => { g.font = v; clearBlockOwn('font', '글꼴'); up(); }));
   const f2 = el('div'); f2.appendChild(el('span', 'lab', '굵기'));
-  f2.appendChild(segment([[400, '보통'], [500, '굵게'], [600, '아주 굵게']], g.weight,
+  /* 눈금은 «글꼴이 실제로 가진 굵기» 다 [BOLD_W 의 주석]. 400/500/600 으로 좁혀 두었더니
+     500 은 400 으로, 600 은 700 으로 그려져 «굵게» 가 «보통» 과 똑같아 보였다. */
+  f2.appendChild(segment([[400, '보통'], [700, '굵게'], [800, '아주 굵게']], g.weight,
     v => { g.weight = +v; clearBlockOwn('bold', '굵기'); up(); }));
   r1.append(f1, f2); sec.appendChild(r1);
 

@@ -2310,8 +2310,7 @@ function expandBase() {
   const shown = cv && cv.querySelector('.blk-html');
   if (shown) w = Math.round(shown.clientWidth);
   if (!w && cv) w = Math.round(cv.clientWidth - (S.canvas.ml || 0) - (S.canvas.mr || 0));
-  if (!w) w = ((isFit() ? (S.canvas.width ?? CANVAS_W) : CANVAS_W) || 560)
-              - (S.canvas.ml || 0) - (S.canvas.mr || 0);
+  if (!w) w = (canvasW() || 560) - (S.canvas.ml || 0) - (S.canvas.mr || 0);
   w = Math.max(40, w);
   const h = Math.max(w, Math.round(w / (RATIOS[S.canvas.ratio] || 1)) || w);
   let base = '';
@@ -3138,7 +3137,7 @@ function renderCanvas() {
   cv.style.setProperty('--cv-cols', String(cols));
   cv.style.setProperty('--cv-colgap', colGap + 'px');
   /* 한 단의 폭 — 안쪽 폭에서 단 사이를 빼고 나눈 값. 재는 것도 앉히는 것도 이 값을 쓴다. */
-  const innerW = (isFit() ? (S.canvas.width ?? CANVAS_W) : CANVAS_W) - S.canvas.ml - S.canvas.mr;
+  const innerW = canvasW() - S.canvas.ml - S.canvas.mr;
   cv.style.setProperty('--cv-colw',
     Math.max(1, Math.floor((innerW - (cols - 1) * colGap) / cols)) + 'px');
   cv.classList.toggle('has-cols', cols > 1 && isFit());
@@ -3174,7 +3173,7 @@ function renderCanvas() {
 
   if (isFit()) {
     /* 내용에 맞춤 — 폭만 사람이 정하고 높이는 쓴 만큼 따라온다. 나눌 장도 없다. */
-    cv.style.setProperty('--canvas-w', (S.canvas.width ?? CANVAS_W) + 'px');
+    cv.style.setProperty('--canvas-w', canvasW() + 'px');
     cv.style.aspectRatio = 'auto'; cv.style.height = 'auto'; cv.style.minHeight = '0';
   } else {
     /* 비율 지정 — 미리보기는 '나올 그림' 그 자체여야 한다.
@@ -3182,7 +3181,7 @@ function renderCanvas() {
        무엇이 나올지 가늠이 안 된다. 그래서 한 장 높이의 정수배로만 세운다 —
        한 장이면 딱 그 비율, 두 장이면 그 비율 두 개를 쌓은 꼴이다.
        (재는 동안에는 늘어날 수 있게 열어 두고, 잰 뒤 아래에서 못 박는다.) */
-    cv.style.setProperty('--canvas-w', CANVAS_W + 'px');
+    cv.style.setProperty('--canvas-w', canvasW() + 'px');
     cv.style.aspectRatio = 'auto';
     cv.style.height = 'auto';
     cv.style.minHeight = pageBox().h + 'px';
@@ -3198,17 +3197,43 @@ function renderCanvas() {
     cv.classList.toggle('ratio-center', pages <= 1 && !isTopAlign() && !colOn());
   }
   fitCanvas();
+  ensureCanvasFonts();
+}
+
+/* 지금 캔버스가 쓰는 글꼴의 스타일시트를 그 자리에서 받는다.
+   글꼴은 테마 안에 산다 [t.fmt.font]. 그런데 받아 오는 자리가 «글꼴 고르기» 하나뿐이라
+   [fontSelect], 테마만 바꾸면 그 테마의 글꼴이 문서에 아예 안 붙어 있는 채로 그려졌다 —
+   전에 한 번이라도 골라 본 글꼴만 우연히 바로 바뀌어 보이던 것이 «가끔 안 바뀐다» 의 정체다.
+   블록마다 따로 고른 글꼴도 [usedFonts] 같은 이유로 여기서 함께 챙긴다.
+   처음 받는 글꼴이면 붙은 뒤 한 번 더 그린다 — 글꼴이 바뀌면 줄바꿈이 바뀌고,
+   줄바꿈이 바뀌면 장 나누기까지 달라지므로 다시 재야 한다. */
+const _fontSeen = new Set();
+function ensureCanvasFonts() {
+  const fresh = usedFonts().filter(n => !_fontSeen.has(n));
+  if (!fresh.length) return;
+  /* 먼저 표시해 둔다 — 아래 renderCanvas 가 여기로 되돌아와 끝없이 도는 것을 막는다 */
+  fresh.forEach(n => _fontSeen.add(n));
+  ensureFontsLoaded($('#canvas')).then(() => renderCanvas()).catch(() => { });
 }
 
 /* ── 미리보기 축소 ────────────────────────────────────────────
-   캔버스는 화면 폭과 상관없이 늘 정해진 논리 폭으로 짠다 — 비율 지정은 560px 로 못 박고,
-   내용에 맞춤은 사람이 정한 폭을 그대로 쓴다. 그래야 어느 기기에서 저장하든 줄바꿈도
+   캔버스는 화면 폭과 상관없이 늘 정해진 논리 폭으로 짠다 — 비율 지정은 그 비율이 정하고
+   [canvasW], 내용에 맞춤은 사람이 정한 폭을 그대로 쓴다. 그래야 어느 기기에서 저장하든 줄바꿈도
    말풍선 폭도 같은 그림이 나온다.
    (예전에는 캔버스가 화면 폭까지 좁아져, 아이폰에서 저장하면 한 줄에 들어가는 글자 수가
     PC 의 절반이 되고 말풍선 좌우 폭이 딴판으로 나왔다.)
    화면이 그보다 좁을 때는 폭을 줄이는 대신 다 짜 놓은 것을 통째로 축소해 보여 준다.
    transform 은 자리를 안 줄여 주므로 줄어든 만큼의 자리는 감싸개가 대신 잡는다. */
 const CANVAS_W = 560;
+/* 비율 판형의 논리 크기 — 못 박는 것은 폭이 아니라 «짧은 변» 이다.
+   예전에는 폭을 560 으로 못 박아 가로 판형만 짧은 변이 쪼그라들었다(16:9 가 560×315,
+   저장하면 1440×810). 세로 9:16 이 1440×2561 인데 그 거울상인 16:9 가 그보다 한참
+   작은 그림으로 나오던 이유가 이것이다. 짧은 변을 기준으로 잡으면 9:16 · 3:4 · 1:1 은
+   여태 값 그대로이고, 4:3 · 16:9 만 제 거울상만큼 커진다.
+   (덤으로 단 나누기의 한 단 폭도 그만큼 넓어져 글이 덜 길어진다 [renderCanvas].) */
+const ratioCanvasW = () => Math.round(CANVAS_W * Math.max(1, RATIOS[S.canvas.ratio] || 1));
+/* 지금 캔버스의 논리 폭 — 내용 맞춤은 사람이 정한 폭, 비율 지정은 위 규칙이 정한다 */
+const canvasW = () => isFit() ? (S.canvas.width ?? CANVAS_W) : ratioCanvasW();
 const PREVIEW_ZOOMS = [.5, .67, .8, 1, 1.25, 1.5, 2, 3, 4];
 function fitCanvas() {
   const cv = $('#canvas'), box = $('#canvasFit'), stage = $('#stage');
@@ -3628,7 +3653,7 @@ function musicNode(b, th) {
   /* 크기 손잡이는 «캔버스 안쪽 폭의 몇 할» 이다. 그 폭에서 글자 크기를 뽑아 안쪽 전체가
      따라오게 한다 — 크기를 움직이면 폭만이 아니라 그림이 통째로 커지고 작아진다.
      (100% 가 캔버스를 꽉 채운 상태다. 그보다 크면 넘치므로 위로는 열지 않는다.) */
-  const cvW = isFit() ? (S.canvas.width ?? CANVAS_W) : CANVAS_W;
+  const cvW = canvasW();
   const inner = Math.max(40, cvW - (S.canvas.ml || 0) - (S.canvas.mr || 0));
   const w = inner * clamp(b.scale ?? 100, 30, 100) / 100;
   d.style.width = w + 'px';
@@ -3806,6 +3831,108 @@ function placeFlow(rows, items, H, avail, hold, topAlign, step) {
   });
 }
 
+/* ── 한 단에 안 들어가는 글 쪼개기 ─────────────────────────
+   장을 나누는 최소 단위는 블록 하나다 [pageRanges]. 그런데 단을 나누면 줄 폭이 1/N 로
+   좁아져 같은 글이 N 배로 길어진다 — 세로가 짧은 판형(16:9 · 4:3)에서는 블록 하나가
+   한 단보다 키가 커지고, 그러면 끊을 자리가 없어 그대로 다음 장까지 흘러넘쳤다.
+   그래서 그런 «글 블록» 만 줄 단위로 쪼개 형제 블록 여럿으로 바꿔 둔다. 그 뒤로는
+   pageRanges 가 여느 블록처럼 다루므로 장을 세는 셈은 한 줄도 안 바뀐다.
+   신문이 한 문단을 단 경계에서 이어 흘리는 것과 같은 꼴이다.
+
+   말풍선 · 사진 · 음악 · HTML 은 안 쪼갠다 — 껍데기가 있는 것을 반으로 가르면 꼬리도
+   모서리도 두 동강이 나 그림이 깨진다. 그것들은 여태처럼 통짜로 다음 단에 넘어간다.
+   [주의] 화면에 그린 것만 손댄다 — S.blocks 는 건드리지 않는다. 조각들은 원래 블록의
+   data-id 를 그대로 물려받으므로 고르기도 끌기도 여태와 똑같이 먹는다. */
+function splitTallRows(budget) {
+  if (!(budget > 20)) return;
+  flowRows().forEach(row => {
+    if (row.offsetHeight <= budget) return;
+    /* 글 하나만 든 블록인가 — 그 밖은 쪼갤 수 없다 */
+    if (row.children.length !== 1) return;
+    const src = row.firstElementChild;
+    if (!src.classList.contains('blk-text')) return;
+
+    const pos = flatChars(src);
+    const last = pos.length - 1;
+    if (last < 1) return;
+
+    /* a 번째 글자부터 k 번째 글자까지가 몇 줄에 걸치는가. 글자 하나의 y 를 읽는 대신
+       «걸친 줄 수» 를 보는 이유는 softBreaks 의 주석과 같다 — 소프트 줄바꿈 직후 첫
+       글자의 rect 가 앞 줄 자리로 오는 웹킷의 affinity 를 이 값은 타지 않는다. */
+    const range = document.createRange();
+    const linesFrom = (a, k) => {
+      try {
+        range.setStart(pos[a].node, pos[a].off);
+        range.setEnd(pos[k].node, pos[k].off + 1);
+      } catch (_) { return 1; }
+      const tops = new Set();
+      for (const r of range.getClientRects()) if (r.height > 0) tops.add(Math.round(r.top));
+      return tops.size || 1;
+    };
+
+    const total = linesFrom(0, last);
+    if (total < 2) return;
+    /* 한 문단 안에서는 줄 높이가 고르다 — 글 높이를 줄 수로 나누면 그것이 한 줄이다.
+       (덕분에 줄마다 y 를 재지 않아도 되어, 재는 횟수가 조각 수만큼으로 준다.) */
+    const textH = src.getBoundingClientRect().height;
+    const extra = Math.max(0, row.offsetHeight - textH);   /* 글 말고 블록이 더 쓰는 높이 */
+    const per = Math.max(1, Math.floor((budget - extra) / (textH / total)));
+    if (per >= total) return;                              /* 사실은 들어간다 */
+
+    /* a 에서 세어 per 줄을 넘기는 첫 글자 = 다음 조각의 첫 글자.
+       앞에서부터 재면 글이 길수록 한 번 재는 값이 통째로 커진다 — 창을 per 줄 언저리로
+       넓혀 가며 잡고(지수 탐색), 그 안에서만 이분 탐색한다. */
+    const nextCut = a => {
+      if (a >= last) return -1;
+      let lo = a, step = 64, hi = Math.min(last, a + step);
+      while (linesFrom(a, hi) <= per) {
+        if (hi >= last) return -1;                         /* 남은 것이 다 들어간다 */
+        lo = hi; step *= 2; hi = Math.min(last, hi + step);
+      }
+      while (lo + 1 < hi) {
+        const mid = (lo + hi) >> 1;
+        if (linesFrom(a, mid) > per) hi = mid; else lo = mid;
+      }
+      return hi;
+    };
+
+    const edges = [0];
+    for (let a = 0, k; (k = nextCut(a)) > a; a = k) edges.push(k);
+    if (edges.length < 2) return;
+    edges.push(pos.length);
+
+    const made = [];
+    for (let i = 0; i + 1 < edges.length; i++) {
+      const a = edges[i], b = edges[i + 1];
+      if (a >= b) continue;
+      try {
+        range.setStart(pos[a].node, pos[a].off);
+        range.setEnd(pos[b - 1].node, pos[b - 1].off + 1);
+      } catch (_) { return; }
+      const w = row.cloneNode(false);                      /* .blk — class · data-id 그대로 */
+      w.dataset.split = i ? 'tail' : 'head';
+      const t = src.cloneNode(false);                      /* .blk-text — 정렬 · 색 · 글꼴 그대로 */
+      t.appendChild(range.cloneContents());
+      /* 줄이 넘어가던 자리의 공백은 화면에서 줄 끝에 매달려 폭을 안 먹는다. 조각의
+         맨 앞으로 오면 그 공백이 진짜 들여쓰기가 되어 첫 글자가 한 칸씩 밀린다. */
+      if (i) {
+        const first = t.firstChild;
+        if (first && first.nodeType === 3) first.nodeValue = first.nodeValue.replace(/^[ \t]+/, '');
+      }
+      w.appendChild(t);
+      made.push(w);
+    }
+    if (made.length < 2) return;
+    /* 양쪽 정렬은 «문단의 마지막 줄» 만 늘리지 않는다. 쪼갠 자리는 문단이 끝난 데가
+       아니라 이어지는 데라, 그대로 두면 단 밑동 한 줄만 들쭉날쭉해 눈에 띈다 —
+       마지막 조각을 뺀 나머지는 끝 줄까지 늘려 단이 반듯하게 떨어지게 한다. */
+    if (getComputedStyle(src).textAlign === 'justify')
+      made.slice(0, -1).forEach(w => w.firstElementChild.style.textAlignLast = 'justify');
+    made.forEach(w => row.parentNode.insertBefore(w, row));
+    row.remove();
+  });
+}
+
 function pageBox() {
   /* 소수점이 살아 있으면 렌더마다 끝자리가 흔들려 높이가 미세하게 달라진다 — 정수로 못 박는다 */
   const w = Math.round($('#canvas').clientWidth) || 1;
@@ -3856,7 +3983,11 @@ function renderPageMarks() {
   }
   /* 서명도 어느 장에서든 바닥을 차지하므로 그 몫을 먼저 빼고 장을 센다.
      그러고도 한 장에 들어가면 여태처럼 본문과 한 덩어리로 가운데에 놓는다. */
-  const rg = pageRanges(headHold + (foot ? fh + gap : 0));
+  const hold = headHold + (foot ? fh + gap : 0);
+  /* 장을 세기 «전에» 쪼개 둔다 — 한 단에 안 들어가는 글은 여기서 여러 블록이 되고,
+     그다음부터는 pageRanges 가 그 사이를 끊을 수 있다 [splitTallRows]. */
+  splitTallRows(pageBox().inner - hold);
+  const rg = pageRanges(hold);
   /* 단을 쓰면 rg 한 칸은 «장» 이 아니라 «단» 이다 — 장은 그것을 N 개씩 묶은 것이다 */
   const N = colOn() ? colCount() : 1;
   const pages = Math.max(1, Math.ceil(rg.length / N));
@@ -6091,7 +6222,7 @@ function themeEditor() {
     let pw = MAXH * ar, ph = MAXH;
     if (pw > MAXW) { pw = MAXW; ph = MAXW / ar; }
     /* 줄인 배수 — 흐림은 픽셀이라 이만큼 곱해야 캔버스와 같은 세기로 보인다 */
-    const k = pw / ((isFit() ? (S.canvas.width ?? CANVAS_W) : CANVAS_W) || 1);
+    const k = pw / (canvasW() || 1);
     const pv = el('div', 'bgprev');
     pv.style.width = Math.round(pw) + 'px';
     pv.style.height = Math.round(ph) + 'px';
@@ -6845,16 +6976,10 @@ function nodeAt(root, path) {
   for (const i of path || []) { if (!cur || !cur.childNodes[i]) return null; cur = cur.childNodes[i]; }
   return cur;
 }
-/* 줄이 바뀐 지점을 찾는다. <br>·\n 으로 이미 끊긴 자리는 뺀다.
-   [주의] 글자마다 Range 를 잡아 y 를 읽는 방법은 쓰면 안 된다. 웹킷은 소프트 줄바꿈 «직후»
-   첫 글자의 rect 를 앞 줄 자리로 돌려준다(affinity). 그래서 y 가 점프한 글자를 줄 시작으로
-   삼으면 끊긴 자리가 한 글자씩 늦게 잡히고, 그 어긋남이 줄마다 쌓인다 — 저장본에서
-   «바뀝니다» 가 «바 / 뀝니다» 로 갈리던 원인이 이것이었다.
-   대신 «앞에서부터 k 글자를 덮는 Range 가 몇 줄에 걸치는가» 를 본다. 이 값은 affinity 와
-   무관하고 k 에 대해 단조 증가라, 줄마다 이분 탐색 한 번이면 첫 글자를 정확히 집는다. */
-function softBreaks(root) {
-  /* 글자를 (텍스트노드, 오프셋) 으로 펴 둔다. hard = 이 글자 «앞» 이 이미 끊겨 있다 —
-     그 자리에 <br> 을 또 박으면 빈 줄이 하나 더 생긴다. */
+/* 글자를 (텍스트노드, 오프셋) 으로 펴 둔다. hard = 이 글자 «앞» 이 이미 끊겨 있다.
+   줄바꿈 자리를 굳히는 데도[softBreaks], 한 단에 안 들어가는 글을 줄 단위로 쪼개는 데도
+   [splitTallRows] 같은 목록이 필요하다 — 세는 방법이 하나여야 둘이 어긋나지 않는다. */
+function flatChars(root) {
   const pos = [];
   let hard = true;                     /* 첫 글자 앞은 끊긴 것으로 친다 */
   const isBlock = el => /^(block|flex|grid|table|list-item)$/.test(getComputedStyle(el).display);
@@ -6880,12 +7005,19 @@ function softBreaks(root) {
     }
   };
   walk(root);
-  if (pos.length < 2) return [];
-
+  return pos;
+}
+/* «앞에서부터 k 번째 글자까지를 덮는 Range 가 몇 줄에 걸치는가» 를 재는 자.
+   [주의] 글자마다 Range 를 잡아 y 를 읽는 방법은 쓰면 안 된다. 웹킷은 소프트 줄바꿈 «직후»
+   첫 글자의 rect 를 앞 줄 자리로 돌려준다(affinity). 그래서 y 가 점프한 글자를 줄 시작으로
+   삼으면 끊긴 자리가 한 글자씩 늦게 잡히고, 그 어긋남이 줄마다 쌓인다 — 저장본에서
+   «바뀝니다» 가 «바 / 뀝니다» 로 갈리던 원인이 이것이었다.
+   이 값은 affinity 와 무관하고 k 에 대해 단조 증가라, 이분 탐색 한 번이면 어느 줄의 첫
+   글자든 정확히 집어낸다. 줄상자는 인라인 조각마다 따로 오므로 rect 개수가 아니라
+   «서로 다른 top» 을 센다. */
+function lineCounter(pos) {
   const range = document.createRange();
-  /* 0..k 번째 글자를 덮는 Range 가 걸친 줄 수. 줄상자는 인라인 조각마다 따로 오므로
-     개수가 아니라 «서로 다른 top» 을 센다. */
-  const linesTo = k => {
+  return k => {
     try {
       range.setStart(pos[0].node, pos[0].off);
       range.setEnd(pos[k].node, pos[k].off + 1);
@@ -6896,17 +7028,27 @@ function softBreaks(root) {
     }
     return tops.size || 1;
   };
+}
+/* 줄 번호 line(1부터) 의 첫 글자가 pos 의 몇 번째인가 */
+function lineHeadIndex(linesTo, len, line) {
+  let lo = 0, hi = len - 1;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (linesTo(mid) >= line) hi = mid; else lo = mid + 1;
+  }
+  return lo;
+}
 
+/* 줄이 바뀐 지점을 찾는다. <br>·\n 으로 이미 끊긴 자리는 뺀다 [lineCounter 의 주석 참고]. */
+function softBreaks(root) {
+  const pos = flatChars(root);
+  if (pos.length < 2) return [];
+  const linesTo = lineCounter(pos);
   const total = linesTo(pos.length - 1);
   const out = [];
   for (let line = 2; line <= total; line++) {
     /* 그 줄의 첫 글자 = linesTo 가 line 이상이 되는 가장 앞 글자 */
-    let lo = 0, hi = pos.length - 1;
-    while (lo < hi) {
-      const mid = (lo + hi) >> 1;
-      if (linesTo(mid) >= line) hi = mid; else lo = mid + 1;
-    }
-    const p = pos[lo];
+    const p = pos[lineHeadIndex(linesTo, pos.length, line)];
     if (p.hard) continue;              /* 이미 끊긴 자리다 */
     const path = nodePath(p.node, root);
     if (path) out.push({ path, offset: p.off });
@@ -7161,7 +7303,11 @@ const EXPORT_MAX_SIDE = 16000;
 const EXPORT_MAX_PIXELS = 48 * 1024 * 1024;
 function exportRatio(w, h) {
   w = Math.max(1, w); h = Math.max(1, h || 1);
-  const wanted = clamp(1440 / w, 2, 4);
+  /* 화질 목표는 «짧은 변 1440px» 이다 — 폭으로 재면 가로 판형만 짧은 변이 쪼그라들어
+     16:9 가 1440×810 으로, 제 거울상인 9:16(1440×2561)보다 훨씬 작은 그림이 되었다.
+     («내용 맞춤» 은 높이가 내용을 따라 얼마든지 짧아지므로 여태처럼 폭으로 잰다.) */
+  const base = isFit() ? w : Math.min(w, h);
+  const wanted = clamp(1440 / base, 2, 4);
   const bySide = Math.min(EXPORT_MAX_SIDE / w, EXPORT_MAX_SIDE / h);
   const byArea = Math.sqrt(EXPORT_MAX_PIXELS / (w * h));
   return Math.max(1 / Math.max(w, h), Math.min(wanted, bySide, byArea));

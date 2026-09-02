@@ -6881,10 +6881,22 @@ const FONTS = [
   { g: '명조', name: 'Chosun Myungjo',    label: '조선일보명조',    css: 'font/web/chosun-myungjo.css',   local: true, w: [400, 700] },
   { g: '명조', name: 'Chosun Sinmyungjo', label: '조선신명조',      css: 'font/web/chosun-sinmyungjo.css', local: true, w: [400] },
   { g: '명조', name: 'Bookk Myungjo',     label: '부크크명조',      css: 'font/web/bookk-myungjo.css',    local: true, w: [400, 700] },
-  /* 손글씨는 대개 굵기가 하나뿐이다 — 성격이 굵기에 이미 담겨 있어 원래 그렇게 쓴다.
-     굵기 눈금도 그 글꼴이 가진 만큼만 뜬다 [weightSteps]. */
-  { g: '손글씨', name: 'Gaegu',           label: '개구쟁이',        css: 'https://fonts.googleapis.com/css2?family=Gaegu:wght@300;400;700&display=swap',
+  /* 손글씨는 대개 굵기가 하나뿐이다 — 성격이 굵기에 이미 획에 담겨 있어 원래 그렇게 쓴다.
+     굵기 눈금도 그 글꼴이 가진 만큼만 뜬다 [weightSteps].
+     [파일이 무겁다] 나눔손글씨는 한 벌이 3~4MB 다(온글잎은 0.6MB 안팎). 화면에 처음 뜰 때도,
+     이미지로 저장할 때 그 글꼴을 통째로 심을 때도[oneFontEmbedCSS] 그만큼 오래 걸린다.
+     그래서 글꼴마다 CSS 를 따로 둔다 — 한 파일에 몰아 두면 고르지도 않은 글꼴까지 함께 심긴다. */
+  { g: '손글씨', name: 'Gaegu',              label: '개구쟁이',        css: 'https://fonts.googleapis.com/css2?family=Gaegu:wght@300;400;700&display=swap',
     w: [300, 400, 700] },
+  { g: '손글씨', name: 'Ownglyph Wiseelist', label: '온글잎 현명한목록', css: 'font/web/hand-wiseelist.css', w: [400] },
+  { g: '손글씨', name: 'Nanum Kyuri',        label: '규리의 일기',      css: 'font/web/hand-kyuri.css',     w: [400] },
+  { g: '손글씨', name: 'Nanum Appa',         label: '아빠글씨',        css: 'font/web/hand-appa.css',      w: [400] },
+  { g: '손글씨', name: 'Nanum Summer',       label: '여름편지',        css: 'font/web/hand-summer.css',    w: [400] },
+  { g: '손글씨', name: 'Nanum Mongdol',      label: '몽돌',            css: 'font/web/hand-mongdol.css',   w: [400] },
+  { g: '손글씨', name: 'Nanum Kimyooyee',    label: '김유이체',        css: 'font/web/hand-kimyooyee.css', w: [400] },
+  { g: '손글씨', name: 'Nanum Chulpil',      label: '철필글씨',        css: 'font/web/hand-chulpil.css',   w: [400] },
+  { g: '손글씨', name: 'Nanum Grandma',      label: '외할머니글씨',     css: 'font/web/hand-grandma.css',   w: [400] },
+  { g: '손글씨', name: 'Nanum Mujinjang',    label: '무진장 흑돼지',    css: 'font/web/hand-mujinjang.css', w: [400] },
   { g: '도트', name: 'Mona12',            label: '모나12',          css: 'https://cdn.jsdelivr.net/gh/MonadABXY/mona-font/web/mona.css', mono: true,
     w: [400, 700] },
   /* 배포판 galmuri.css 를 직접 쓰지 않는다 — 한 @font-face 안에 woff2 와 ttf 를 같이 적어서

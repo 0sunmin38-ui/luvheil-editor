@@ -8377,9 +8377,22 @@ document.querySelectorAll('.tab').forEach(t => t.onclick = () => {
   render();
 });
 
-let _rz;
+/* «폭이 달라진 것» 과 «높이만 달라진 것» 은 다른 일이다.
+   높이만 줄었다 늘었다 하는 것은 거의 언제나 키보드와 주소창이다 — 안드로이드 크롬은
+   입력칸을 누르면 숨겼던 주소창을 도로 띄우면서 resize 를 보낸다. 그때 패널을 통째로
+   다시 그리면, 방금 포커스를 준 입력칸이 새 것으로 갈려 올라오던 키보드가 도로 내려갔다.
+   [캐릭터 추가 › 이름] 을 눌러도 키보드가 올라오다 마는 것이 이것이었고, 도구·서식 패널의
+   모든 입력칸이 같은 병을 앓았다. closePop 도 같은 자리에서 색 팔레트의 «직접 적는 칸» 을
+   손 밑에서 지워 버렸다. 작성창[#ta]만 멀쩡했던 것은 그것 하나가 다시 그려지지 않는
+   붙박이라서다.
+   폭이 그대로면 다시 그릴 이유도 없다 — 캔버스 크기도(비율·고정폭) 패널의 한 줄에 몇 개가
+   서는지도 폭만 본다. 높이는 --app-vh · --sheet-h 가 따로 맡는다 [syncViewportVars]. */
+let _rz, _rzW = window.innerWidth;
 window.addEventListener('resize', () => {
-  autoGrow(); measureSheet(); closePop();
+  autoGrow(); measureSheet();
+  if (window.innerWidth === _rzW) return;   /* 키보드·주소창이 오르내린 것뿐이다 */
+  _rzW = window.innerWidth;
+  closePop();
   fitCanvas();                       /* 남는 폭이 달라지면 축소율도 달라진다 */
   clearTimeout(_rz);
   _rz = setTimeout(() => { if (!isFit()) render(); else renderPageMarks(); }, 120);

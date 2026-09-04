@@ -2178,7 +2178,11 @@ const KEY = 'chat-excerpt/v1';
 /* ═══ 익명 진단 링버퍼 ═══════════════════════════════════════
    본문·이미지·localStorage 내용은 기록하지 않는다. 사용자가 문제 직후 «진단 복사»를
    누르면 이벤트 순서와 기기/뷰포트 수치만 전달할 수 있다. 서버로 자동 전송하지 않는다. */
-const DIAG_MAX = 160, _diag = [];
+const DIAG_MAX = 160, DIAG_KEY = 'chat-excerpt/diagnostics/v1', _diag = [];
+try {
+  const old = JSON.parse(sessionStorage.getItem(DIAG_KEY) || '[]');
+  if (Array.isArray(old)) _diag.push(...old.slice(-DIAG_MAX));
+} catch (_) { }
 function diag(event, data) {
   const vv = window.visualViewport;
   const rec = { t: Date.now(), e: String(event), w: innerWidth, h: innerHeight,
@@ -2186,6 +2190,7 @@ function diag(event, data) {
     ae: document.activeElement ? String(document.activeElement.id || document.activeElement.tagName || '') : '',
     ...(data || {}) };
   _diag.push(rec); if (_diag.length > DIAG_MAX) _diag.splice(0, _diag.length - DIAG_MAX);
+  try { sessionStorage.setItem(DIAG_KEY, JSON.stringify(_diag)); } catch (_) { }
   try { if (location.hash.includes('debug')) console.debug('[diag]', rec); } catch (_) { }
 }
 function diagCopy() {
@@ -2203,6 +2208,13 @@ function diagCopyFallback(out, done) {
   x.remove();
 }
 diag('boot');
+addEventListener('error', e => diag('window:error', {
+  name: e && e.error && e.error.name || 'Error',
+  message: String(e && (e.message || (e.error && e.error.message) || '')).slice(0, 180)
+}));
+addEventListener('unhandledrejection', e => diag('window:unhandledrejection', {
+  message: String(e && e.reason && (e.reason.message || e.reason) || '').slice(0, 180)
+}));
 /* 기본값을 바꾸면 올린다. 저장본의 판이 낮으면 내용은 지키고 기본값만 새로 잡는다. */
 const SCHEMA = 11;
 /* 제작자 서명은 늘 블록 목록의 맨 끝이어야 한다.
@@ -4838,8 +4850,25 @@ function renderPageMarks() {
   const hold = headHold + (foot ? fh + gap : 0);
   /* 장을 세기 «전에» 쪼개 둔다 — 한 단에 안 들어가는 글은 여기서 여러 블록이 되고,
      그다음부터는 pageRanges 가 그 사이를 끊을 수 있다 [splitTallRows]. */
-  splitTallRows(pageBox().inner - hold);
+  /* Android Chrome의 긴 글에서는 문자별 Range 측정이 지나치게 느리거나 실제 줄바꿈과
+     다른 rect를 돌려줄 수 있다. 우선 확정·표시를 막지 않도록 줄 단위 쪼개기를 건너뛴다.
+     긴 블록은 통째로 다음 장에 놓이며, 이 경로의 성능 계측은 계속 남긴다. */
+  const splitBudget = pageBox().inner - hold, splitAt = performance.now();
+  diag('split:start', { budget: Math.round(splitBudget), rows: flowRows().length });
+  if (isAndroid()) {
+    diag('split:skip-android', { ms: Math.round(performance.now() - splitAt) });
+  } else {
+    try {
+      splitTallRows(splitBudget);
+      diag('split:done', { ms: Math.round(performance.now() - splitAt), rows: flowRows().length });
+    } catch (e) {
+      diag('split:error', { name: e && e.name || 'Error', message: String(e && e.message || '').slice(0, 180) });
+      throw e;
+    }
+  }
+  const rangeAt = performance.now();
   const rg = pageRanges(hold);
+  diag('page-ranges:done', { ms: Math.round(performance.now() - rangeAt), ranges: rg.length });
   /* 단을 쓰면 rg 한 칸은 «장» 이 아니라 «단» 이다 — 장은 그것을 N 개씩 묶은 것이다 */
   const N = colOn() ? colCount() : 1;
   const pages = Math.max(1, Math.ceil(rg.length / N));

@@ -177,7 +177,16 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,
   background-repeat:no-repeat,no-repeat,repeat;
   background-size:cover,cover,auto;
 }
-.canvas > :not(.cv-bg):not(.cv-frame){position:relative;z-index:1}
+/* 캔버스의 직계 자식은 흐름에 세우고 배경 층 위에 올린다 — 배경(.cv-bg·.cv-tex)과
+   프레임(.cv-frame)만 뺀다.
+   [:where 로 감싸는 까닭] :not() 안에 적은 클래스는 선택자의 «무게» 로 잡힌다. 뺄 것이
+   늘 때마다 이 규칙이 무거워져, 자식을 흐름 «밖» 으로 빼려는 규칙들이 여기 밀린다 —
+   장 구분선과 화면머리·서명 사본이 [.pagemark · .head-ghost · .foot-ghost] 그렇게
+   position:absolute 를 잃고, top 이 흐름 맨 끝에서부터 밀어 내려 캔버스 밖으로 나갔다.
+   («다음 장에 제호가 안 뜬다» 가 이것이다 — 사본은 만들어져 있는데 화면 밖에 있었다.)
+   :where() 는 무게가 0 이라 «무엇을 뺄 것인가» 만 남고 힘은 안 실린다. 앞으로 뺄 것이
+   더 늘어도 이 규칙은 무거워지지 않는다. */
+.canvas > :not(:where(.cv-bg, .cv-frame)){position:relative;z-index:1}
 .canvas.is-empty{align-items:center;justify-content:center}
 .canvas-empty{color:var(--text-hint);font-size:12px;text-align:center;line-height:1.7}
 
@@ -968,10 +977,11 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,
 .bulk-row .btn-danger{border-radius:var(--r-ctl);background:var(--danger);border-color:var(--danger);color:#fff}
 
 /* 장 구분선 — 여기서 잘려 다음 장이 시작된다는 표시. 미리보기에만 있고 저장 전에 걷어낸다.
-   [주의] 반드시 «.canvas > » 를 붙여 적는다. 캔버스는 모든 자식에 position:relative 를
-   거는데[.canvas > :not(.cv-bg)] 그 선택자가 더 세서(클래스 둘), 그냥 .pagemark 로 적으면
-   absolute 가 안 먹는다. 그러면 이 선이 흐름 맨 끝(마지막 블록 다음)에 끼어 앉고 top 이
-   거기서부터 밀어 내려, 선은 캔버스 밖으로 나가 안 보이고 자리만 한 칸 더 먹었다.
+   [주의] 반드시 «.canvas > » 를 붙여 적는다. 캔버스가 모든 자식에 position:relative 를
+   걸기 때문이다 — 그냥 .pagemark 로 적으면 그 규칙에 밀려 absolute 가 안 먹고, 이 선이
+   흐름 맨 끝(마지막 블록 다음)에 끼어 앉아 캔버스 밖으로 나간다.
+   (그 규칙은 :where 로 무게를 0 으로 눌러 두었다 [.canvas > :not(:where(…))] — 예전에는
+    거기 :not() 이 하나 늘 때마다 이 선과 사본들이 소리 없이 밀려났다.)
    화면머리·서명 사본이 «.canvas > .head-ghost» 로 적혀 있는 것과 같은 이유다.
    색은 «진한 회색» 이되 고정값이 아니라 캔버스 배경과 글자색을 섞어 만든다 [renderCanvas].
    고정 회색으로 두면 어두운 테마에서 배경에 잠겨 아예 안 보인다 — 섞으면 흰 테마에서는
@@ -1974,8 +1984,8 @@ const DEF_THEME = () => ({
   /* 머리 배경색 — 비워 두면 «자동» 이다(배경·글자를 섞어 띠를 만든다 [headerNode]).
      색을 고르면 그 색을 그대로 깐다. 띠가 있는 것은 메시지1 뿐이라 거기서만 쓴다. */
   header: 'none', headerTitle: '', headerAvatar: '', headerBg: '',
-  /* 신문 제호 — 적은 글자와 기울임 여부. 비워 두면 기본 제호가 선다 [NEWS_MARK]. */
-  headerMark: '', headerItalic: false,
+  /* 신문 제호 — 비워 두면 기본 제호가 선다 [NEWS_MARK] */
+  headerMark: '',
   /* 프레임 — 캔버스 네 변을 두르는 껍데기 [FRAMES]. 화면머리와 달리 본문이 그 «안» 에 든다.
      frameMood 는 미니홈피 왼쪽 쪽의 «TODAY IS ○○» 한 줄이다 — 프레임마다 제 몫의 칸이
      하나씩 생기면 여기서 갈래를 치지만, 아직은 그 하나뿐이라 이름 그대로 둔다. */
@@ -2023,23 +2033,27 @@ const PRESET_THEMES = [
     /* 색은 «갓 스캔한 지면» 이다 — 흰 종이에 순검정 잉크. 누런 종이도 대 봤는데
        (#EAE7DE · #1C1A17) 그쪽은 «오래 묵은 신문» 이고, 이쪽은 «지금 찍혀 나온 신문» 이다.
        대비를 끝까지 올려야 제호의 가는 획과 굵은 선이 또렷하게 갈린다. */
-    bg: '#FFFFFF', fg: '#000000', bubbleBg: '#000000', bubbleFg: '#000000',
-    myBubbleBg: '#000000', myBubbleFg: '#FFFFFF', highlight: '#E4E4E4',
+    bg: '#FFFFFF', fg: '#000000', highlight: '#E4E4E4',
+    /* 대사를 감싸는 네 색은 한 값으로 묶는다 — 인용구는 왼쪽 세로선 하나로 말하므로
+       [.bub.as-quote] 좌우가 다른 색일 이유가 없다. 잉크(#000)보다 한 단 옅은 회색이라
+       선이 글보다 앞서 읽히지 않는다. (글자색은 인용에서 본문색을 따라간다
+       [renderBlock 의 textColor] — 이 네 값은 말풍선으로 바꿔 봤을 때 쓰인다.) */
+    bubbleBg: '#424448', bubbleFg: '#424448',
+    myBubbleBg: '#424448', myBubbleFg: '#424448',
     /* 종이결은 안 깐다 — 결은 «종이» 를 보이게 하는 것이라, 스캔본의 쨍한 흰 바탕과는
        서로 다른 이야기를 한다. 손잡이는 그대로 있으니 [테마 › 배경 › 종이결] 얹고 싶으면
        올리면 된다. */
     paper: 0,
-    /* 맨글이라 말풍선이 없다 — 연속 발화를 묶으면 이름 없이 이어져 누가 말하는지 흐려진다 */
-    bubbleStyle: 'plain', showTail: true, tailShape: 'curve', groupRuns: false,
+    /* 대사는 인용구다 — 신문에 실린 말은 말풍선에 담기지 않고 «따온 말» 로 앉는다.
+       연속 발화는 안 묶는다: 묶으면 이름 없이 이어져 누가 말하는지 흐려진다. */
+    bubbleStyle: 'quote', showTail: true, tailShape: 'curve', groupRuns: false,
     bubbleRadius: 12, brDetail: false, brTL: 12, brTR: 12, brBR: 12, brBL: 12,
     showName: true, showAvatar: false, myName: true, myAvatar: false, roundAvatar: true,
     header: 'news', headerTitle: '문장, 캐릭터 이름 등 내용 작성 가능합니다.',
-    /* 기울임은 꺼 둔다 — 신문의 제호는 곧게 세우는 것이 기본이다.
-       [테마 › 헤더 › 제호 기울임] 으로 켤 수 있고, 그때는 진짜 기울임체로 그려진다. */
-    headerItalic: false,
-    /* 본문은 조선일보명조다 — 이름 그대로 신문 본문을 짜려고 만든 활자라, 획이 가늘고
-       속공간이 좁아 좁은 단에 촘촘히 앉는다. 책 본문용인 부크크명조보다 신문에 가깝다. */
-    fmt: { align: 'justify', weight: 400, font: 'Chosun Myungjo', size: 13, lineHeight: 1.5, letterSpacing: -0.008, blockGap: 20, vAlign: 'top' }
+    /* 두 단으로 짠다 — 신문은 한 줄이 짧아야 눈이 되돌아오는 거리가 짧다. 한 단으로
+       흘리면 지면이 아니라 «긴 글 한 덩어리» 로 읽힌다. 제호는 두 단을 가로질러 선다
+       [.canvas.has-cols > .cv-head]. */
+    fmt: { align: 'justify', weight: 400, font: 'Bookk Myungjo', size: 13, lineHeight: 1.5, letterSpacing: -0.008, blockGap: 20, vAlign: 'top', columns: 2 }
   },
   {
     name: '카카오',
@@ -2156,7 +2170,7 @@ const S = {
 
 const KEY = 'chat-excerpt/v1';
 /* 기본값을 바꾸면 올린다. 저장본의 판이 낮으면 내용은 지키고 기본값만 새로 잡는다. */
-const SCHEMA = 10;
+const SCHEMA = 11;
 /* 제작자 서명은 늘 블록 목록의 맨 끝이어야 한다.
    CSS 의 margin-top:auto 는 '자기 뒤에 아무것도 없을 때' 만 바닥에 붙는다. 서명을 넣은 뒤
    글을 더 쓰면 새 블록이 서명 뒤로 붙어 서명이 가운데로 밀려 올라갔다.
@@ -2370,6 +2384,19 @@ function load() {
       if (t.bg !== '#EAE7DE' || t.fg !== '#1C1A17') return;
       ['bg', 'fg', 'bubbleBg', 'bubbleFg', 'myBubbleBg', 'highlight'].forEach(k => { t[k] = np[k]; });
       if (t.paper === 30 || t.paper === 55 || t.paper === 70) t.paper = np.paper;
+    });
+  }
+  /* 신문 테마를 «맨글 한 단» 에서 «인용구 두 단» 으로 옮긴다 [PRESET_THEMES].
+     역시 그 값을 그대로 쓰던 테마만이다 — 대사 꼴이나 글꼴을 손댔으면 그건 그 사람의 신문이다. */
+  if (loaded && (loaded.v || 0) < 11) {
+    const np = PRESET_THEMES.find(p => p.name === 'newspaper');
+    S.themes.forEach(t => {
+      if (!t || t.name !== 'newspaper' || !np) return;
+      if (t.bubbleStyle !== 'plain' || t.bg !== '#FFFFFF') return;
+      t.bubbleStyle = np.bubbleStyle;
+      ['bubbleBg', 'bubbleFg', 'myBubbleBg', 'myBubbleFg'].forEach(k => { t[k] = np[k]; });
+      if (t.fmt && t.fmt.font === 'Chosun Myungjo') t.fmt.font = np.fmt.font;
+      if (t.fmt && (t.fmt.columns == null || t.fmt.columns === 1)) t.fmt.columns = np.fmt.columns;
     });
   }
   /* 서명이 가운데 끼어 있는 채로 저장된 예전 작업본을 들여올 때 여기서 한 번 바로잡는다 */
@@ -4114,18 +4141,18 @@ const markEm = s => [...String(s)].reduce((n, ch) =>
    저장 렌더에서는 잴 자리 자체가 없다. 글꼴과 글자만 있으면 나오는 값을 쓴다. */
 let _markCv = null;
 /* 제호를 재는 데 쓰는 글꼴 문자열 — 화면에 거는 것과 같은 꼴이어야 잰 값이 맞는다 */
-const markFontCss = (px, italic) => (italic ? 'italic ' : '') + NEWS_MARK_W + ' ' + px + 'px "'
+const markFontCss = px => NEWS_MARK_W + ' ' + px + 'px "'
   + NEWS_FONT.mark + '", "' + NEWS_FONT.markKo + '", serif';
 /* 제호 글자가 «제 줄 안에서 위아래로 얼마나 떠 있는가» — 글자 크기 기준의 몫이다.
    대문자만 있는 줄은 밑에 내림자(g·y) 자리가 통째로 비어, 위아래가 뜨는 몫이 서로 다르다.
    그 몫을 알아야 선을 잉크에 바싹 붙일 수 있다 [NEWS_MAST_GAP].
    못 재는 브라우저도 있으므로(재는 값이 없거나 숫자가 아니면) 어림값을 돌려준다. */
-function markInk(text, italic) {
+function markInk(text) {
   const fb = { top: .13, bottom: .15 };
   if (!_newsFontOn) return fb;
   try {
     const g = _markCv || (_markCv = document.createElement('canvas').getContext('2d'));
-    g.font = markFontCss(100, italic);
+    g.font = markFontCss(100);
     const m = g.measureText(text);
     const fa = m.fontBoundingBoxAscent / 100, fd = m.fontBoundingBoxDescent / 100;
     const ia = m.actualBoundingBoxAscent / 100, id = m.actualBoundingBoxDescent / 100;
@@ -4135,13 +4162,12 @@ function markInk(text, italic) {
     return { top: base - ia, bottom: NEWS_MAST_LH - (base + id) };
   } catch (_) { return fb; }
 }
-function markWidthEm(text, italic) {
+function markWidthEm(text) {
   const track = MAST_TRACK * [...String(text)].length;
   if (_newsFontOn) {
     try {
       const g = _markCv || (_markCv = document.createElement('canvas').getContext('2d'));
-      /* 기울인 글자는 폭이 다르다 — 잴 때도 같은 꼴로 재야 한 줄에 떨어진다 */
-      g.font = markFontCss(100, italic);
+      g.font = markFontCss(100);
       const w = g.measureText(text).width / 100;
       if (w > 0) return w + track;
     } catch (_) { }
@@ -4290,13 +4316,10 @@ function headerNode(th) {
     const markText = (th.headerMark ?? '').trim() || NEWS_MARK;
     const mark = Object.assign(el('div', 'hd-mast'), { textContent: markText });
     mark.style.fontFamily = '"' + NEWS_FONT.mark + '", "' + NEWS_FONT.markKo + '", serif';
-    /* 기울임은 테마가 정한다 — 같은 제호를 곧게도 기울게도 쓴다 [themeHeaderFields] */
-    const ital = !!th.headerItalic;
-    if (ital) mark.style.fontStyle = 'italic';
     /* 한도는 «말이 안 되는 값» 만 막는다. 예전에는 88px 에서 잘랐는데, 폭 1000 짜리 판형에서
        제호만 그 자리에 멈춰 선은 끝까지 가고 이름만 작은 «깨진 머리» 가 되었다 —
        제호는 폭을 따라가는 물건이라 폭이 커지면 같이 커져야 한다. */
-    const markEmW = markWidthEm(markText, ital);
+    const markEmW = markWidthEm(markText);
     const mastPx = clamp(Math.round(w * NEWS_MAST_FILL
       / (markEmW * NEWS_MAST_SQUEEZE)), 14, 240);
     mark.style.fontSize = mastPx + 'px';
@@ -4318,7 +4341,7 @@ function headerNode(th) {
     mark.style.transform = 'translateX(-50%) scaleX(' + NEWS_MAST_SQUEEZE + ')';
     mark.style.fontWeight = String(NEWS_MARK_W);
     /* 선과 잉크 사이에 남길 틈만큼만 두고 나머지는 음수로 당긴다 [NEWS_MAST_GAP] */
-    const ink = markInk(markText, ital);
+    const ink = markInk(markText);
     mark.style.marginTop = (NEWS_MAST_GAP - ink.top).toFixed(3) + 'em';
     mark.style.marginBottom = (NEWS_MAST_GAP - ink.bottom).toFixed(3) + 'em';
     /* 굵은 선도 제호를 따라간다 — px 로 못 박아 두면 제호가 커질수록 실처럼 가늘어 보인다.
@@ -7275,10 +7298,6 @@ function themeEditor() {
       mi.oninput = () => { t.headerMark = mi.value; up(); };
       mw.appendChild(mi);
       hdBox.appendChild(mw);
-      /* 기울인 제호 — 그 시절 신문에도 곧은 제호와 기울인 제호가 나란히 있었다.
-         글꼴 한 벌 안에 기울임체가 따로 있어 [HEAD_FONTS] 가짜 기울임이 아니다. */
-      hdBox.appendChild(toggleRow('제호 기울임', '', !!t.headerItalic,
-        v => { t.headerItalic = v; up(); }));
     }
     const tw = el('div');
     tw.appendChild(el('span', 'lab', hdKind === 'news' ? '날짜 · 한 줄' : '이름'));
@@ -7834,10 +7853,9 @@ const snapWeight = (name, w) => {
    그래도 찾는 길은 같아야 한다 — 저장 임베드가 이름으로 스타일시트를 찾기 때문이다
    [oneFontEmbedCSS]. 그래서 목록에서 못 찾으면 여기서 한 번 더 본다 [fontOf]. */
 const HEAD_FONTS = [
-  /* 제호와 날짜줄이 이 한 벌을 함께 쓴다 [NEWS_FONT] — 굵기는 400 하나면 된다
-     [NEWS_MARK_W]. 기울임체는 «제호 기울임» 토글이 쓰므로 함께 받는다. */
+  /* 제호와 날짜줄이 이 한 벌을 함께 쓴다 [NEWS_FONT] — 굵기는 400 하나면 된다 [NEWS_MARK_W] */
   { name: 'Playfair Display', label: '플레이페어 디스플레이',
-    css: 'https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;1,400&display=swap', w: [400] }
+    css: 'https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400&display=swap', w: [400] }
 ];
 /* 못 찾으면 목록의 첫 글꼴이다 — 어디서든 이름 하나로 글꼴 한 벌을 얻는다는 약속을 지킨다 */
 const fontOf = n => FONTS.find(f => f.name === n) || HEAD_FONTS.find(f => f.name === n) || FONTS[0];

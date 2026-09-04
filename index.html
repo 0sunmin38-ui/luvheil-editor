@@ -8208,10 +8208,11 @@ function captureCloneAt(cv) {
     if (r.width && r.height) {
       c.style.setProperty('box-sizing', 'border-box', 'important');
       ['width', 'min-width', 'max-width'].forEach(k => c.style.setProperty(k, r.width.toFixed(2) + 'px', 'important'));
-      /* HTML 블록은 내부 카드 전체가 자연 높이로 늘어나야 한다. 미리보기 축소가 남은
-         getBoundingClientRect 높이를 강제로 박으면 그 아래 내용이 overflow 에 잘린다.
-         빈 줄 높이 보정이 필요한 일반 텍스트·말풍선·서명만 높이를 고정한다. */
-      if (!f.classList.contains('blk-html')) {
+      /* HTML 블록은 내부 카드 전체가 자연 높이로 늘어나야 한다. Android Chrome 역시
+         SVG 안에서 같은 글꼴을 화면보다 조금 높게 그릴 수 있다. 그 기기에서 화면 높이를
+         max-height 로 잠그면 말풍선은 그대로인데 글자만 아래로 잘린다. Android 에서는
+         폭만 고정하고 높이는 내용과 패딩으로 다시 계산한다 — 여백값 자체는 같은 CSS다. */
+      if (!f.classList.contains('blk-html') && !isAndroid()) {
         ['height', 'min-height', 'max-height'].forEach(k => c.style.setProperty(k, r.height.toFixed(2) + 'px', 'important'));
       }
     }
@@ -8429,10 +8430,15 @@ async function renderExact(hti, node, w, h, scale, fontCss, bg) {
   };
   /* 글꼴을 다 심었으면 그걸로, 못 심었으면 skipFonts 로. 중간(외부 url 잔존)은 두지 않는다.
      글꼴이 먼저다 — 두 그리기 방식을 다 해 보고 나서야 글꼴을 포기한다. */
+  /* 레퍼런스 구현처럼 Android 는 논리 크기 DOM 을 그대로 두고 pixelRatio 로 래스터 크기만
+     키운다. CSS transform 으로 내용 자체를 확대하면 Android 의 foreignObject 가 글자와
+     상자 클립을 서로 다른 반올림 자리에서 계산해 마지막 획·줄을 자를 수 있다.
+     다른 엔진은 기존의 또렷한 scaled 경로를 그대로 유지한다. */
+  const ordered = isAndroid() ? [legacy, scaled] : [scaled, legacy];
   const variants = fontCss
-    ? [{ ...scaled, fontEmbedCSS: fontCss }, { ...legacy, fontEmbedCSS: fontCss },
-       { ...scaled, skipFonts: true }, { ...legacy, skipFonts: true }]
-    : [{ ...scaled, skipFonts: true }, { ...legacy, skipFonts: true }];
+    ? [...ordered.map(v => ({ ...v, fontEmbedCSS: fontCss })),
+       ...ordered.map(v => ({ ...v, skipFonts: true }))]
+    : ordered.map(v => ({ ...v, skipFonts: true }));
   let last;
   for (const opt of variants) { try { return await hti.toPng(node, opt); } catch (e) { last = e; } }
   throw last || new Error('저장 실패');

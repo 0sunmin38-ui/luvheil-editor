@@ -3336,13 +3336,17 @@ const FRAME_PAD = {
 const lockRatio = () => FRAME_RATIO[frameKind(theme())] || null;
 const ratioKey = () => lockRatio() || S.canvas.ratio;
 const framePad = () => FRAME_PAD[frameKind(theme())] || { t: 0, r: 0, b: 0, l: 0 };
-/* 캔버스 안쪽 여백 — 사람이 정한 여백과 껍데기 두께 중 «큰 쪽» 이다.
-   더하지 않는 이유: 껍데기 두께에 이미 숨 쉴 자리가 들어 있어, 여백 기본값(32)까지
-   보태면 창 안이 통째로 한 뼘 더 좁아진다. 여백을 크게 주면 그때는 그 값이 이긴다. */
-const padT = () => Math.max(S.canvas.mt || 0, framePad().t);
-const padR = () => Math.max(S.canvas.mr || 0, framePad().r);
-const padB = () => Math.max(S.canvas.mb || 0, framePad().b);
-const padL = () => Math.max(S.canvas.ml || 0, framePad().l);
+/* 캔버스 안쪽 여백 — 껍데기 두께에 사람이 정한 여백을 «더한» 값이다.
+   [왜 더하나] 한때 둘 중 큰 쪽을 썼는데, 껍데기가 두꺼운 변에서는(미니홈피 왼쪽 252px)
+   여백을 아무리 만져도 아무 일이 안 일어났다 — 손잡이가 헛도는 셈이다.
+   더하면 여백이 «창 안쪽, 글이 앉는 자리» 에만 먹는다: 껍데기는 제자리를 지키고
+   글만 그만큼 안으로 들어온다. 프레임이 없으면 framePad 가 0 이라 예전 그대로다.
+   (껍데기 두께에는 이미 «숨 쉴 자리» 가 들어 있으므로 [FRAME_PAD] 여백을 0 으로 두어도
+   첫 줄이 창틀에 닿지 않는다 — 더 주고 싶을 때만 주면 된다.) */
+const padT = () => (S.canvas.mt || 0) + framePad().t;
+const padR = () => (S.canvas.mr || 0) + framePad().r;
+const padB = () => (S.canvas.mb || 0) + framePad().b;
+const padL = () => (S.canvas.ml || 0) + framePad().l;
 
 /* 껍데기 안의 작은 그림. 글꼴에 딸린 문자를 쓰면 기기마다 다른 그림이 나오므로 직접 그린다. */
 const FR_ICON = {
@@ -6582,6 +6586,9 @@ function panelCanvas(p) {
 function marginSection(c) {
   const mw = el('div');
   const head = el('div', 'row-between');
+  /* 프레임을 두르면 이 여백은 캔버스 가장자리가 아니라 «창 안쪽» 부터 잰다 [padT] —
+     껍데기가 먹는 자리는 따로 있고, 여기서 정하는 것은 그 안에서 글이 얼마나 물러설지다. */
+  const framed = frameKind(theme()) !== 'none';
   const l = el('span', 'sec-lab', '캔버스 여백'); l.style.margin = '0';
   head.appendChild(l);
   /* 열림·닫힘을 그대로 보여주는 꺾쇠. '나누기'/'합치기' 는 눌러 봐야 뭐가 되는지 알 수 있었다. */
@@ -6590,6 +6597,12 @@ function marginSection(c) {
   tg.innerHTML = `<svg viewBox="0 0 24 24"><path d="${c.marginDetail ? 'M18 15l-6-6-6 6' : 'M6 9l6 6 6-6'}"/></svg>`;
   tg.onclick = () => { c.marginDetail = !c.marginDetail; save(); render(); };
   head.appendChild(tg); mw.appendChild(head);
+  if (framed) {
+    const note = el('div', 'lab-sub');
+    note.style.margin = '7px 0 0';
+    note.textContent = '프레임 안쪽, 글이 앉는 자리부터 잽니다.';
+    mw.appendChild(note);
+  }
   const box = el('div', 'grid2'); box.style.cssText = 'margin-top:9px;row-gap:9px';
   if (c.marginDetail) {
     /* 값만 바뀌는 자리다 — 캔버스만 다시 그린다. 패널까지 다시 그리면 누르던 단추가
@@ -6777,9 +6790,10 @@ function themeEditor() {
   frBox.appendChild(segment(FRAMES, frKind, v => { t.frame = v; render(); }));
   if (frKind !== 'none') {
     frBox.appendChild(Object.assign(el('div', 'lab-sub'), {
-      textContent: frKind === 'cyworld'
+      textContent: (frKind === 'cyworld'
         ? '판형이 4:3 가로로 고정됩니다 · 본문은 오른쪽 쪽에만 흐릅니다'
-        : '본문이 창 안쪽에만 흐릅니다 · 판형은 그대로 고를 수 있습니다'
+        : '본문이 창 안쪽에만 흐릅니다 · 판형은 그대로 고를 수 있습니다')
+        + ' · 캔버스 여백은 창 안쪽부터 잽니다'
     }));
     const nw = el('div');
     nw.appendChild(el('span', 'lab', frKind === 'cyworld' ? '미니홈피 주인' : '대화 상대'));

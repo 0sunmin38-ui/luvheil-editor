@@ -147,7 +147,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,
   transform:rotate(var(--bgr,0deg));filter:blur(var(--bgb,0px));
 }
 .cv-bg u{position:absolute;inset:0;display:block;background:var(--bgo-c,#fff);opacity:var(--bgo,0)}
-.canvas > :not(.cv-bg){position:relative;z-index:1}
+.canvas > :not(.cv-bg):not(.cv-frame){position:relative;z-index:1}
 .canvas.is-empty{align-items:center;justify-content:center}
 .canvas-empty{color:var(--text-hint);font-size:12px;text-align:center;line-height:1.7}
 
@@ -486,6 +486,196 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,
 .hd-news .hd-mastrow{margin:.45em 0 .5em}
 .hd-news .hd-mastrow + .hd-thin{margin-top:0}
 .hd-news .hd-thin + .hd-thick{margin-top:.22em}
+
+/* ═══ 프레임 ══════════════════════════════════════════════════
+   화면머리가 «맨 위에 눕는 띠» 라면 프레임은 «사방을 두른 창» 이다 — 캔버스 네 변을
+   껍데기가 통째로 먹고, 본문은 그 안에 뚫린 칸(.fr-hole)에만 흐른다.
+   [그림 파일을 안 쓴다] 저장은 캔버스를 SVG 안에서 처음부터 다시 그리는 일이라
+   [renderExact], 바깥 url 을 하나라도 물면 그린 캔버스가 오염돼 저장 자체가 막힌다.
+   그래서 프레임은 테두리·그러데이션·작은 인라인 SVG 로만 짠다.
+   [자리를 맞추는 법] 뚫린 칸의 두께가 곧 캔버스의 안쪽 여백이다 [FRAME_PAD] —
+   두 값이 어긋나면 글이 껍데기 위로 올라탄다. 여백은 «둘 중 큰 쪽» 을 쓰므로
+   [padT 따위] 사람이 여백을 더 주면 글이 칸 안쪽으로 더 들어갈 뿐 껍데기는 안 밀린다. */
+.canvas > .cv-frame{
+  position:absolute;left:0;right:0;top:0;height:100%;
+  z-index:0;pointer-events:none;overflow:hidden;
+  display:flex;flex-direction:column;
+  /* 도트 글꼴은 정수 크기에서만 또렷하다 — 본문처럼 em 으로 흔들리게 두지 않고 px 로 박는다 */
+  font-family:"Galmuri11",-apple-system,BlinkMacSystemFont,sans-serif;
+  font-size:11px;line-height:1.25;letter-spacing:0;font-weight:400;
+  text-align:left;white-space:nowrap;color:#1B1B1B;
+}
+.cv-frame *{box-sizing:border-box;min-width:0}
+/* 본문이 앉을 빈 칸. 바탕은 테마의 전체 배경색을 그대로 쓴다 — 프레임이 색을 못 박아 두면
+   같은 창을 밝게도 어둡게도 못 쓴다. */
+.cv-frame .fr-hole{flex:1 1 auto;min-height:0;background:var(--cv-bg,#fff)}
+.cv-frame .fr-row{display:flex;align-items:center;flex:0 0 auto}
+.cv-frame .fr-sp{flex:1 1 auto}
+
+/* ── 버디버디 ─────────────────────────────────────────────
+   2000년대 윈도 창 그대로다 — 남색 제목줄 · 회색 메뉴 · 청록 몸통, 그 안에 흰 대화 칸.
+   색은 원본 화면에서 그대로 집어 온 값이다(#00007F · #BFBFBF · #4F8F9F · #82B9B8). */
+.fr-buddy{background:#C8C8C3;padding:3px;color:#000}
+/* 제목줄 — 왼쪽에 아이콘과 이름, 오른쪽에 최소화·최대화·닫기 */
+.fr-buddy .fb-title{height:20px;background:#00007F;color:#fff;padding:0 2px 0 3px;gap:4px}
+.fr-buddy .fb-title svg{width:13px;height:13px;display:block}
+.fr-buddy .fb-btns{display:flex;gap:2px}
+.fr-buddy .fb-btns i{
+  width:15px;height:14px;display:block;position:relative;
+  background:#C8C8C3;border:1px solid;border-color:#FFF #7A7A79 #7A7A79 #FFF;
+}
+.fr-buddy .fb-btns i::before,.fr-buddy .fb-btns i::after{content:'';position:absolute;background:#000}
+/* 최소화 — 바닥에 눕는 짧은 막대 */
+.fr-buddy .fb-btns .fb-min::before{left:3px;bottom:3px;width:7px;height:2px}
+/* 최대화 — 위가 두꺼운 네모 */
+.fr-buddy .fb-btns .fb-max::before{left:3px;top:3px;width:9px;height:8px;background:none;border:1px solid #000;border-top-width:2px}
+/* 닫기 — 엇갈린 두 막대 */
+.fr-buddy .fb-btns .fb-cls::before,.fr-buddy .fb-btns .fb-cls::after{
+  left:2px;top:6px;width:10px;height:1.5px;transform-origin:50% 50%;
+}
+.fr-buddy .fb-btns .fb-cls::before{transform:rotate(45deg)}
+.fr-buddy .fb-btns .fb-cls::after{transform:rotate(-45deg)}
+/* 메뉴줄 — 괄호 안 글쇠에 밑줄이 그어지던 그 줄 */
+.fr-buddy .fb-menu{height:20px;background:#BFBFBF;padding:0 6px;gap:14px;color:#000}
+.fr-buddy .fb-menu u{text-decoration:underline;text-underline-offset:1px}
+/* 몸통 — 창 안쪽을 채우는 청록. 위를 검은 선 하나로 끊어 메뉴줄과 갈라 놓는다 */
+.fr-buddy .fb-body{
+  flex:1 1 auto;min-height:0;display:flex;flex-direction:column;padding:5px;
+  border:1px solid #000;background:linear-gradient(#61A1B0,#4F8F9F 22%,#4F9290);
+}
+/* 탭줄 — 왼쪽에 뜬 «대화» 탭, 오른쪽에 초대·화상·음성 */
+.fr-buddy .fb-tabs{height:27px;align-items:flex-end;gap:6px}
+.fr-buddy .fb-tab{
+  display:flex;align-items:center;gap:5px;height:23px;padding:0 12px 0 8px;
+  background:linear-gradient(#FFF,#E7F2F4);border:1px solid #A9C9CE;border-bottom:0;
+  border-radius:6px 6px 0 0;font-weight:700;color:#245C6B;
+}
+.fr-buddy .fb-tab svg{width:24px;height:13px;display:block}
+.fr-buddy .fb-tools2{display:flex;gap:4px;margin-bottom:2px}
+.fr-buddy .fb-tools2 i{
+  height:18px;padding:0 8px;display:flex;align-items:center;color:#fff;
+  background:linear-gradient(#5FA8B4,#3E7F8C);border:1px solid #2E6572;border-radius:4px;
+}
+/* 창 안의 판 — 대화 칸·아이콘줄·입력 칸·상태줄이 이 안에 쌓인다 */
+.fr-buddy .fb-panel{
+  flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:4px;
+  padding:5px;background:#EFF8F8;border:1px solid #FFF;
+}
+.fr-buddy .fb-chatbox{
+  flex:1 1 auto;min-height:0;display:flex;flex-direction:column;
+  border:1px solid #82B9B8;background:#fff;
+}
+/* 대화상대 — 네모 딱지 뒤에 이름 */
+.fr-buddy .fb-peer{
+  height:22px;padding:0 6px;gap:5px;flex:0 0 auto;
+  background:linear-gradient(#CFEAF0,#A6CBD4);border-bottom:1px solid #82B9B8;color:#154A5C;
+}
+.fr-buddy .fb-peer b{
+  font-weight:400;padding:1px 4px;background:#F2FBFC;border:1px solid #7FA9B4;color:#134454;
+}
+.fr-buddy .fb-peer span{overflow:hidden;text-overflow:ellipsis}
+/* 아이콘줄 — 글자꼴·이모티콘·그림·첨부 */
+.fr-buddy .fb-icons{
+  height:27px;flex:0 0 auto;padding:0 5px;gap:5px;
+  background:linear-gradient(#CBE6EA,#8FBCC2);border:1px solid #82B9B8;
+}
+.fr-buddy .fbi{
+  width:19px;height:17px;display:grid;place-items:center;border-radius:2px;
+  background:linear-gradient(#FFF,#DCEAEE);border:1px solid #7F9DA8;
+  font-size:10px;font-weight:700;color:#1B4B7A;
+}
+.fr-buddy .fbi-emo::before{content:'';width:11px;height:11px;border-radius:50%;background:#A3D65C;box-shadow:inset 0 0 0 1px #4E7A18}
+.fr-buddy .fbi-img::before{content:'';width:12px;height:9px;background:linear-gradient(#BFE6FF,#5EA9DE);border:1px solid #35617F}
+.fr-buddy .fbi-clip::before{content:'';width:5px;height:11px;border:1.5px solid #6B7A85;border-radius:3px}
+/* 입력 칸 — 오른쪽 아래에 보내기 */
+.fr-buddy .fb-input{
+  height:46px;flex:0 0 auto;background:#fff;border:1px solid #82B9B8;
+  display:flex;align-items:flex-end;justify-content:flex-end;padding:3px;
+}
+.fr-buddy .fb-send{
+  height:34px;padding:0 12px;display:grid;place-items:center;color:#12455C;
+  background:linear-gradient(#F2FAFC,#CFE5EC);border:1px solid #5E93A2;border-radius:3px;
+}
+.fr-buddy .fb-status{
+  height:21px;flex:0 0 auto;padding:0 7px;justify-content:flex-end;color:#12455C;
+  background:linear-gradient(#CBE6EA,#8FBCC2);border:1px solid #82B9B8;
+}
+.fr-buddy .fb-status > div{overflow:hidden;text-overflow:ellipsis}
+
+/* ── 미니홈피 ─────────────────────────────────────────────
+   민트 바탕 위에 놓인 흰 책 한 권. 왼쪽은 프로필 쪽, 오른쪽이 본문 쪽이고
+   가운데 등에는 링이 물려 있다. 오른쪽 옆구리로 홈·사진첩·다이어리 탭이 삐져나온다.
+   판형은 4:3 으로 못 박는다 [FRAME_RATIO] — 세로로 길어지면 «책» 이 아니게 된다. */
+.fr-cyworld{
+  padding:16px 26px 16px 16px;color:#4A4A4A;
+  background:#BEE3EA;
+  background-image:radial-gradient(rgba(255,255,255,.55) 1px, transparent 1.2px);
+  background-size:6px 6px;
+}
+/* 옆구리 탭 — 책 «뒤» 에 서서 오른쪽으로만 삐져나온다 */
+.fr-cyworld .mh-tabs{
+  position:absolute;right:3px;top:88px;width:23px;z-index:0;
+  display:flex;flex-direction:column;gap:5px;
+}
+/* 글자는 flex 로 한가운데에 세운다 — writing-mode 만 걸면 «줄 상자» 가 제 폭만큼만
+   차지해 왼쪽에 붙는다. 왼쪽 테두리가 없는 만큼(1px) 왼쪽 여백을 1px 더 줘서
+   잉크의 한가운데가 탭 폭(23px)의 한가운데에 오게 맞춘다. */
+.fr-cyworld .mh-tabs i{
+  display:flex;align-items:center;justify-content:center;
+  padding:9px 3px 9px 4px;border-radius:0 7px 7px 0;
+  background:#3FA9C9;color:#fff;
+  border:1px solid #2E8FAC;border-left:0;
+}
+.fr-cyworld .mh-tabs b{writing-mode:vertical-rl;font-weight:400;letter-spacing:1px;line-height:1}
+.fr-cyworld .mh-tabs i:first-child{background:#F3FCFE;color:#2C7E96;border-color:#B9DFE8}
+.fr-cyworld .mh-book{
+  position:relative;z-index:1;flex:1 1 auto;min-height:0;display:flex;flex-direction:column;
+  padding:12px;background:#fff;border:1px solid #A9D8E2;border-radius:14px;
+  box-shadow:0 1px 4px rgba(30,90,105,.18);
+}
+/* 책머리 — 왼쪽에 방문 수, 가운데에 «○○의 미니홈피», 오른쪽에 홈설정 */
+.fr-cyworld .mh-top{height:26px;gap:10px;flex:0 0 auto}
+.fr-cyworld .mh-hits{color:#8A8A8A;letter-spacing:.5px}
+.fr-cyworld .mh-hits b{color:#F06E28;font-weight:400}
+.fr-cyworld .mh-title{
+  font-size:15px;font-weight:700;color:#3A3A3A;
+  overflow:hidden;text-overflow:ellipsis;
+}
+.fr-cyworld .mh-set{color:#F06E28;display:flex;align-items:center;gap:3px}
+.fr-cyworld .mh-set::before{content:'';width:7px;height:7px;border-radius:50%;background:#F06E28}
+.fr-cyworld .mh-pages{flex:1 1 auto;min-height:0;display:flex;margin-top:8px}
+.fr-cyworld .mh-page{
+  border:1px solid #DDEEF1;border-radius:8px;background:#fff;
+  display:flex;flex-direction:column;padding:10px;min-height:0;
+}
+.fr-cyworld .mh-left{width:178px;flex:0 0 178px;gap:7px}
+.fr-cyworld .mh-right{flex:1 1 auto}
+/* 등 — 링 넷이 두 쪽을 물고 있다 */
+.fr-cyworld .mh-spine{
+  width:26px;flex:0 0 26px;display:flex;flex-direction:column;
+  align-items:center;justify-content:space-evenly;padding:34px 0;
+}
+.fr-cyworld .mh-spine i{width:21px;height:9px;border:2px solid #A9D6DE;border-radius:9px;background:#fff}
+.fr-cyworld .mh-today{color:#7FA9B4;letter-spacing:.3px;overflow:hidden;text-overflow:ellipsis}
+.fr-cyworld .mh-today b{color:#3A3A3A;font-weight:700}
+/* 프로필 사진 — 네모다. 미니홈피의 대문 사진은 동그랗게 깎이지 않았다. */
+.fr-cyworld .mh-photo{
+  width:100%;aspect-ratio:4/3;border:1px solid #D9E6E9;background:#EEF6F8;
+  display:grid;place-items:center;overflow:hidden;flex:0 0 auto;
+}
+.fr-cyworld .mh-photo img{width:100%;height:100%;object-fit:cover;display:block}
+.fr-cyworld .mh-photo svg{width:44%;height:auto;fill:#C4D9DE}
+.fr-cyworld .mh-mood{color:#3A3A3A;font-size:12px;overflow:hidden;text-overflow:ellipsis}
+.fr-cyworld .mh-edit{color:#9AB4BA;letter-spacing:.4px}
+.fr-cyworld .mh-wave{
+  height:22px;padding:0 7px;justify-content:space-between;color:#6F7A7D;
+  border:1px solid #DCE6E8;border-radius:4px;background:#FBFDFD;flex:0 0 auto;
+}
+.fr-cyworld .mh-foot{height:18px;flex:0 0 auto;margin-top:6px;gap:9px;color:#3FA9C9}
+.fr-cyworld .mh-foot em{font-style:normal;color:#9AA6A9}
+.fr-cyworld .mh-foot b{
+  font-weight:400;color:#fff;background:#9CC6D2;border-radius:3px;padding:2px 6px;
+}
 
 /* 화면머리는 장마다 맨 위에 온다 — 서명과 같은 방식이다. 첫 장의 것은 진짜(.head-pin)를
    캔버스 맨 위에 못 박고, 뒷장에는 사본(.head-ghost)을 같은 자리에 깐다.
@@ -1729,7 +1919,11 @@ const DEF_THEME = () => ({
      신문 제호처럼 캐릭터와 상관없는 것도 같은 칸으로 다룰 수 있어야 한다. */
   /* 머리 배경색 — 비워 두면 «자동» 이다(배경·글자를 섞어 띠를 만든다 [headerNode]).
      색을 고르면 그 색을 그대로 깐다. 띠가 있는 것은 메시지1 뿐이라 거기서만 쓴다. */
-  header: 'none', headerTitle: '', headerAvatar: '', headerBg: ''
+  header: 'none', headerTitle: '', headerAvatar: '', headerBg: '',
+  /* 프레임 — 캔버스 네 변을 두르는 껍데기 [FRAMES]. 화면머리와 달리 본문이 그 «안» 에 든다.
+     frameMood 는 미니홈피 왼쪽 쪽의 «TODAY IS ○○» 한 줄이다 — 프레임마다 제 몫의 칸이
+     하나씩 생기면 여기서 갈래를 치지만, 아직은 그 하나뿐이라 이름 그대로 둔다. */
+  frame: 'none', frameMood: ''
 });
 
 /* [원본 builtinThemes · builtinThemesV2] 함께 딸려 오는 테마.
@@ -1809,6 +2003,33 @@ const PRESET_THEMES = [
     header: 'imessage', headerTitle: '캐릭터이름',
     fmt: { align: 'left', weight: 400, font: 'Pretendard', size: 12.5, lineHeight: 1.7, letterSpacing: -0.008, blockGap: 20, vAlign: 'top' }
   },
+  /* 프레임을 두르는 두 벌 [FRAMES]. 여느 테마가 «색과 말풍선» 을 정한다면 이 둘은 «어떤 창에
+     담기는가» 까지 정한다 — 그래서 화면머리를 안 쓴다(창이 이미 제 머리를 가졌다). */
+  {
+    name: '미니홈피',
+    frame: 'cyworld',
+    bg: '#FFFFFF', fg: '#3B3B3B', bubbleBg: '#EAF6F9', bubbleFg: '#2E3A3E',
+    myBubbleBg: '#FFF0CE', myBubbleFg: '#4A3A16', highlight: '#CFEDF6',
+    bubbleStyle: 'bubble', showTail: true, tailShape: 'curve',
+    bubbleRadius: 10, brDetail: false, brTL: 10, brTR: 10, brBR: 10, brBL: 10,
+    showName: true, showAvatar: false, myName: true, myAvatar: false, roundAvatar: false,
+    header: 'none', headerTitle: '김라연', frameMood: '그냥',
+    fmt: { align: 'left', weight: 400, font: 'KoPubWorld Dotum', size: 12.5, lineHeight: 1.65, letterSpacing: -0.008, blockGap: 14, vAlign: 'top' }
+  },
+  {
+    name: '버디버디',
+    frame: 'buddy',
+    bg: '#FFFFFF', fg: '#1B1B1B', bubbleBg: '#FFFFFF', bubbleFg: '#1B1B1B',
+    myBubbleBg: '#FFFFFF', myBubbleFg: '#1B1B1B', highlight: '#CFE6F3',
+    /* 그 시절 대화창은 «이름 : 말» 이 줄줄이 쌓이는 맨글이었다 — 말풍선을 안 쓴다.
+       이어 말하기도 안 묶는다: 묶으면 이름 없이 이어져 누가 말하는지 흐려진다. */
+    bubbleStyle: 'plain', showTail: false, tailShape: 'curve', groupRuns: false,
+    bubbleRadius: 0, brDetail: false, brTL: 0, brTR: 0, brBR: 0, brBL: 0,
+    showName: true, showAvatar: false, myName: true, myAvatar: false, roundAvatar: false,
+    header: 'none', headerTitle: '이제행복하다',
+    /* 껍데기와 같은 도트 글꼴이다 [FRAME_FONT] — 11 이 이 글꼴이 또렷하게 찍히는 크기다 */
+    fmt: { align: 'left', weight: 400, font: 'Galmuri11', size: 11, lineHeight: 1.7, letterSpacing: 0, blockGap: 8, vAlign: 'top' }
+  },
 ];
 /* 기본으로 딸려 오는 테마인가. 이름으로 찾는다 — 이름을 바꿔 쓰면 더 이상 기본 테마가 아니다. */
 const presetOf = t => t && PRESET_THEMES.find(p => p.name === t.name);
@@ -1867,7 +2088,7 @@ const S = {
 
 const KEY = 'chat-excerpt/v1';
 /* 기본값을 바꾸면 올린다. 저장본의 판이 낮으면 내용은 지키고 기본값만 새로 잡는다. */
-const SCHEMA = 7;
+const SCHEMA = 8;
 /* 제작자 서명은 늘 블록 목록의 맨 끝이어야 한다.
    CSS 의 margin-top:auto 는 '자기 뒤에 아무것도 없을 때' 만 바닥에 붙는다. 서명을 넣은 뒤
    글을 더 쓰면 새 블록이 서명 뒤로 붙어 서명이 가운데로 밀려 올라갔다.
@@ -1993,6 +2214,14 @@ function load() {
     S.activeThemeId = S.themes[0].id;
   }
   if (!S.themes.some(t => t.id === S.activeThemeId)) S.activeThemeId = S.themes[0].id;
+  /* 프레임을 두른 테마 둘이 뒤늦게 합류했다 — 이미 쓰던 사람 목록에도 한 번 넣어 준다.
+     판이 오를 때 «딱 한 번» 이다: 부팅마다 채우면 일부러 지운 테마가 자꾸 되살아난다. */
+  if (loaded && (loaded.v || 0) < 8) {
+    const have = new Set(S.themes.map(t => t && t.name));
+    PRESET_THEMES.forEach(p => {
+      if (!have.has(p.name)) S.themes.push(Object.assign(DEF_THEME(), JSON.parse(JSON.stringify(p))));
+    });
+  }
   /* 서명이 가운데 끼어 있는 채로 저장된 예전 작업본을 들여올 때 여기서 한 번 바로잡는다 */
   pinFooter();
   /* 꼬리 미세 조정을 두던 시절의 값 — 지금은 프리셋이 전부 정하므로 남겨 두면 헷갈리기만 한다 */
@@ -2054,7 +2283,8 @@ function fmtStore() {
 const fmt = () => { const t = theme(); return t ? Object.assign({}, S.format, t.fmt || {}) : S.format; };
 /* 캔버스는 두 갈래다 — 내용에 맞춰 늘어나거나, 정한 비율로 여러 장에 나눠 담거나.
    자동 분할은 '비율을 지정' 에 딸린 성질이라 따로 켜고 끄지 않는다. */
-const isFit = () => (S.canvas.mode || 'ratio') === 'fit';
+/* 프레임이 판형을 못 박으면 «내용 맞춤» 은 없다 — 창은 정해진 크기의 그릇이다 [FRAME_RATIO] */
+const isFit = () => !lockRatio() && (S.canvas.mode || 'ratio') === 'fit';
 /* 내용 묶음을 장의 위에 붙이는가 — 안 그러면 여태처럼 세로 가운데다 [.canvas.ratio-center].
    테마의 글자 서식에 산다 [fontControls] — 같은 글을 테마만 바꿔 다르게 앉힐 수 있다. */
 const isTopAlign = () => (fmt().vAlign || 'center') === 'top';
@@ -2323,10 +2553,10 @@ function expandBase() {
   let w = 0;
   const shown = cv && cv.querySelector('.blk-html');
   if (shown) w = Math.round(shown.clientWidth);
-  if (!w && cv) w = Math.round(cv.clientWidth - (S.canvas.ml || 0) - (S.canvas.mr || 0));
-  if (!w) w = (canvasW() || 560) - (S.canvas.ml || 0) - (S.canvas.mr || 0);
+  if (!w && cv) w = Math.round(cv.clientWidth - padL() - padR());
+  if (!w) w = (canvasW() || 560) - padL() - padR();
   w = Math.max(40, w);
-  const h = Math.max(w, Math.round(w / (RATIOS[S.canvas.ratio] || 1)) || w);
+  const h = Math.max(w, Math.round(w / (RATIOS[ratioKey()] || 1)) || w);
   let base = '';
   if (cv) {
     const c = getComputedStyle(cv);
@@ -3080,13 +3310,162 @@ function autoSnapForWriting(writing) {
 
 /* ── 캔버스 렌더 ─────────────────────────────────────────── */
 /* [원본 export.ratio] 기본은 9:16 세로. 캔버스는 위아래로 긴 것이 기본 꼴이다. */
+
+/* ═══ 프레임 ══════════════════════════════════════════════════
+   화면머리[HEADS]가 캔버스 맨 위에 눕는 띠라면, 프레임은 네 변을 통째로 두르는 껍데기다.
+   본문은 그 안에 뚫린 칸에만 흐른다 — 그 칸의 두께가 곧 캔버스 안쪽 여백이다 [FRAME_PAD].
+   테마가 소유한다: 같은 글을 창만 바꿔 다른 시절로 옮겨 담을 수 있어야 한다. */
+const FRAMES = [['none', '없음'], ['cyworld', '미니홈피'], ['buddy', '버디버디']];
+const frameKind = t => (FRAMES.some(f => f[0] === (t && t.frame)) ? t.frame : 'none');
+/* 껍데기 글자는 테마 글꼴을 안 따른다 — 그 시절 화면의 얼굴은 결국 이 도트 글꼴이다.
+   [FONTS] 에 이미 있는 것이라 저장 임베드도 같은 길로 간다 [usedFonts]. */
+const FRAME_FONT = 'Galmuri11';
+/* 판형을 못 박는 창. 미니홈피는 펼친 책이라 세로로 길어지면 꼴이 무너진다 —
+   비율을 고를 수 없게 잠근다 [panelCanvas · ratioKey]. */
+const FRAME_RATIO = { cyworld: '4:3' };
+/* 껍데기가 먹는 자리(px). CSS 에 적은 두께를 그대로 더한 값에 «숨 쉴 자리» 를 얹은 것이다 —
+   딱 껍데기 두께만 주면 첫 줄이 프레임에 붙어 버린다.
+   [셈] 버디버디 위: 바깥테 3 + 제목줄 20 + 메뉴 20 + 몸통테 1 + 몸통여백 5 + 탭줄 27
+        + 판테 1 + 판여백 5 + 대화칸테 1 + 대화상대 22 = 105, 여기에 10 을 더한다.
+   CSS 를 고치면 이 숫자도 같이 고쳐야 한다 — 어긋나면 글이 껍데기 위로 올라탄다. */
+const FRAME_PAD = {
+  cyworld: { t: 82, r: 58, b: 72, l: 252 },
+  buddy: { t: 115, r: 26, b: 132, l: 26 }
+};
+/* 프레임이 잠근 판형. 없으면 사람이 고른 것을 그대로 쓴다. */
+const lockRatio = () => FRAME_RATIO[frameKind(theme())] || null;
+const ratioKey = () => lockRatio() || S.canvas.ratio;
+const framePad = () => FRAME_PAD[frameKind(theme())] || { t: 0, r: 0, b: 0, l: 0 };
+/* 캔버스 안쪽 여백 — 사람이 정한 여백과 껍데기 두께 중 «큰 쪽» 이다.
+   더하지 않는 이유: 껍데기 두께에 이미 숨 쉴 자리가 들어 있어, 여백 기본값(32)까지
+   보태면 창 안이 통째로 한 뼘 더 좁아진다. 여백을 크게 주면 그때는 그 값이 이긴다. */
+const padT = () => Math.max(S.canvas.mt || 0, framePad().t);
+const padR = () => Math.max(S.canvas.mr || 0, framePad().r);
+const padB = () => Math.max(S.canvas.mb || 0, framePad().b);
+const padL = () => Math.max(S.canvas.ml || 0, framePad().l);
+
+/* 껍데기 안의 작은 그림. 글꼴에 딸린 문자를 쓰면 기기마다 다른 그림이 나오므로 직접 그린다. */
+const FR_ICON = {
+  /* 말풍선 둘 — 버디버디의 얼굴이다 */
+  talk: '<svg viewBox="0 0 26 14" aria-hidden="true">'
+    + '<ellipse cx="8" cy="6.6" rx="7.4" ry="5.6" fill="#A9DA63" stroke="#4E7A18"/>'
+    + '<ellipse cx="18.4" cy="8" rx="7" ry="5.2" fill="#D7EFAE" stroke="#4E7A18"/>'
+    + '<g fill="#3F6614"><circle cx="5.2" cy="6.6" r=".9"/><circle cx="8" cy="6.6" r=".9"/>'
+    + '<circle cx="10.8" cy="6.6" r=".9"/></g></svg>',
+  bud: '<svg viewBox="0 0 14 14" aria-hidden="true">'
+    + '<ellipse cx="7" cy="7.5" rx="6.4" ry="5.2" fill="#A9DA63" stroke="#2F5A0E"/>'
+    + '<path d="M4 11l-1.6 3 4-2z" fill="#A9DA63" stroke="#2F5A0E" stroke-width=".8"/></svg>'
+};
+const frIcon = svg => { const s = el('span'); s.innerHTML = svg; return s.firstChild; };
+const frRow = (cls, ...kids) => { const n = el('div', 'fr-row ' + cls); n.append(...kids); return n; };
+const frTxt = (cls, s) => Object.assign(el('div', cls), { textContent: s });
+
+/* 프레임 한 장. 여러 장으로 나뉘면 장마다 사본이 하나씩 깔린다 [renderPageMarks]. */
+function frameNode(th) {
+  const kind = frameKind(th);
+  if (kind === 'none') return null;
+  const name = (th.headerTitle || '').trim();
+  const f = el('div', 'cv-frame fr-' + kind);
+
+  if (kind === 'buddy') {
+    const btns = el('div', 'fb-btns');
+    btns.append(el('i', 'fb-min'), el('i', 'fb-max'), el('i', 'fb-cls'));
+    f.appendChild(frRow('fb-title', frIcon(FR_ICON.bud), frTxt('', '대화하기'), el('div', 'fr-sp'), btns));
+
+    const menu = frRow('fb-menu');
+    [['파일', 'F'], ['기능', 'A'], ['도구', 'T']].forEach(([w, k]) => {
+      const m = el('div');
+      m.appendChild(document.createTextNode(w + '('));
+      m.appendChild(Object.assign(el('u'), { textContent: k }));
+      m.appendChild(document.createTextNode(')'));
+      menu.appendChild(m);
+    });
+    f.appendChild(menu);
+
+    const body = el('div', 'fb-body');
+    const tab = el('div', 'fb-tab');
+    tab.append(frIcon(FR_ICON.talk), Object.assign(el('span'), { textContent: '대화' }));
+    const t2 = el('div', 'fb-tools2');
+    ['초대', '화상', '음성'].forEach(s => t2.appendChild(Object.assign(el('i'), { textContent: s })));
+    body.appendChild(frRow('fb-tabs', tab, el('div', 'fr-sp'), t2));
+
+    const panel = el('div', 'fb-panel');
+    const chat = el('div', 'fb-chatbox');
+    chat.append(
+      frRow('fb-peer', Object.assign(el('b'), { textContent: '대화상대' }),
+        Object.assign(el('span'), { textContent: ': ' + name })),
+      el('div', 'fr-hole'));
+    const icons = frRow('fb-icons');
+    icons.append(Object.assign(el('i', 'fbi'), { textContent: 'T' }),
+      el('i', 'fbi fbi-emo'), el('i', 'fbi fbi-img'), el('i', 'fbi fbi-clip'));
+    const input = el('div', 'fb-input');
+    input.appendChild(frTxt('fb-send', '보내기(S)'));
+    panel.append(chat, icons, input,
+      frRow('fb-status', frTxt('', '만든이 : ' + (name || '버디버디'))));
+    body.appendChild(panel);
+    f.appendChild(body);
+    return f;
+  }
+
+  /* 미니홈피 — 민트 위에 놓인 책 한 권 */
+  const tabs = el('div', 'mh-tabs');
+  ['홈', '사진첩', '다이어리'].forEach(s => {
+    const tab = el('i');
+    tab.appendChild(Object.assign(el('b'), { textContent: s }));
+    tabs.appendChild(tab);
+  });
+  f.appendChild(tabs);
+
+  const book = el('div', 'mh-book');
+  const hits = el('div', 'mh-hits');
+  hits.appendChild(document.createTextNode('TODAY '));
+  hits.appendChild(Object.assign(el('b'), { textContent: '486' }));
+  hits.appendChild(document.createTextNode('  TOTAL 1052'));
+  book.appendChild(frRow('mh-top', hits, el('div', 'fr-sp'),
+    frTxt('mh-title', name ? name + '의 미니홈피' : '미니홈피'),
+    el('div', 'fr-sp'), el('div', 'mh-set', '홈설정')));
+
+  const left = el('div', 'mh-page mh-left');
+  const today = el('div', 'mh-today');
+  today.appendChild(document.createTextNode('TODAY IS  '));
+  /* 적은 그대로 쓴다 — 비워 두면 «TODAY IS» 만 남는다. 빈칸에 대신 글자를 넣으면
+     그것이 저장본에 그대로 찍힌다 [headerTitle 과 같은 규칙]. */
+  today.appendChild(Object.assign(el('b'), { textContent: (th.frameMood || '').trim() }));
+  left.appendChild(today);
+  const photo = el('div', 'mh-photo');
+  if (th.headerAvatar) { const i = el('img'); i.src = th.headerAvatar; i.alt = ''; photo.appendChild(i); }
+  else photo.appendChild(frIcon('<svg viewBox="0 0 24 24" aria-hidden="true">' + HD_ICON.person[1] + '</svg>'));
+  left.appendChild(photo);
+  left.appendChild(frTxt('mh-mood', name));
+  left.appendChild(el('div', 'fr-sp'));
+  left.appendChild(frTxt('mh-edit', '▸EDIT  ▸HISTORY'));
+  left.appendChild(frRow('mh-wave', frTxt('', '파도타기'), frTxt('', '0명')));
+
+  const spine = el('div', 'mh-spine');
+  for (let i = 0; i < 4; i++) spine.appendChild(el('i'));
+
+  const right = el('div', 'mh-page mh-right');
+  right.appendChild(el('div', 'fr-hole'));
+  const foot = frRow('mh-foot');
+  foot.append(frTxt('', '·내 미니룸'), frTxt('', '·미니미설정'), frTxt('', '·미니룸설정'),
+    el('div', 'fr-sp'), Object.assign(el('em'), { textContent: '답글수정' }),
+    Object.assign(el('b'), { textContent: '방명록' }));
+  right.appendChild(foot);
+
+  const pages = el('div', 'mh-pages');
+  pages.append(left, spine, right);
+  book.appendChild(pages);
+  f.appendChild(book);
+  return f;
+}
+
 const RATIOS = { '9:16': 9 / 16, '3:4': 3 / 4, '1:1': 1, '4:3': 4 / 3, '16:9': 16 / 9 };
 
 function renderCanvas() {
   const cv = $('#canvas'), th = theme(), f = fmt();
   /* 이전 렌더의 중앙 정렬과 서명 자리가 페이지 높이 계산에 섞이지 않게 먼저 푼다. */
   cv.classList.remove('ratio-center', 'foot-pinned');
-  cv.style.setProperty('--cv-ratio', String(RATIOS[S.canvas.ratio] || 1));
+  cv.style.setProperty('--cv-ratio', String(RATIOS[ratioKey()] || 1));
   cv.style.setProperty('--cv-bg', th.bg);
   cv.style.setProperty('--cv-fg', th.fg);
   /* 장 구분선 색 [.canvas > .pagemark] — 배경과 글자색을 섞어 어느 테마에서든 같은 세기로
@@ -3134,10 +3513,13 @@ function renderCanvas() {
     cv.style.setProperty('--tail-w', String(tl.w));
     cv.style.setProperty('--tail-ar', String(tl.ar));
   }
-  cv.style.setProperty('--cv-pt', S.canvas.mt + 'px');
-  cv.style.setProperty('--cv-pb', S.canvas.mb + 'px');
-  cv.style.setProperty('--cv-pl', S.canvas.ml + 'px');
-  cv.style.setProperty('--cv-pr', S.canvas.mr + 'px');
+  /* 안쪽 여백은 사람이 정한 값과 프레임 두께 중 큰 쪽이다 [padT] — 프레임이 없으면 예전 그대로다.
+     여기서 한 번 못 박아 두면 이 값을 읽는 CSS 가 전부(.cv-head 의 음수 여백 · foot-pinned)
+     프레임을 함께 셈한다. */
+  cv.style.setProperty('--cv-pt', padT() + 'px');
+  cv.style.setProperty('--cv-pb', padB() + 'px');
+  cv.style.setProperty('--cv-pl', padL() + 'px');
+  cv.style.setProperty('--cv-pr', padR() + 'px');
   cv.style.setProperty('--cv-gap', (f.blockGap ?? 10) + 'px');
   cv.style.setProperty('--cv-fs', f.size + 'px');
   cv.style.setProperty('--cv-lh', String(f.lineHeight));
@@ -3177,7 +3559,7 @@ function renderCanvas() {
   cv.style.setProperty('--cv-cols', String(cols));
   cv.style.setProperty('--cv-colgap', colGap + 'px');
   /* 한 단의 폭 — 안쪽 폭에서 단 사이를 빼고 나눈 값. 재는 것도 앉히는 것도 이 값을 쓴다. */
-  const innerW = canvasW() - S.canvas.ml - S.canvas.mr;
+  const innerW = canvasW() - padL() - padR();
   cv.style.setProperty('--cv-colw',
     Math.max(1, Math.floor((innerW - (cols - 1) * colGap) / cols)) + 'px');
   cv.classList.toggle('has-cols', cols > 1 && isFit());
@@ -3198,6 +3580,11 @@ function renderCanvas() {
     u.style.setProperty('--bgo', String((th.bgOverlay ?? 0) / 100));
     layer.append(i, u); cv.appendChild(layer);
   }
+
+  /* 프레임은 블록이 없어도 세운다 — 화면머리와 달리 «캔버스가 어떤 창인가» 자체라,
+     빈 캔버스에서도 무엇을 고른 것인지 눈으로 봐야 한다. 배경 이미지 위에 깔린다. */
+  const frn = frameNode(th);
+  if (frn) cv.appendChild(frn);
 
   if (!S.blocks.length) {
     cv.classList.add('is-empty');
@@ -3271,7 +3658,7 @@ const CANVAS_W = 560;
    작은 그림으로 나오던 이유가 이것이다. 짧은 변을 기준으로 잡으면 9:16 · 3:4 · 1:1 은
    여태 값 그대로이고, 4:3 · 16:9 만 제 거울상만큼 커진다.
    (덤으로 단 나누기의 한 단 폭도 그만큼 넓어져 글이 덜 길어진다 [renderCanvas].) */
-const ratioCanvasW = () => Math.round(CANVAS_W * Math.max(1, RATIOS[S.canvas.ratio] || 1));
+const ratioCanvasW = () => Math.round(CANVAS_W * Math.max(1, RATIOS[ratioKey()] || 1));
 /* 지금 캔버스의 논리 폭 — 내용 맞춤은 사람이 정한 폭, 비율 지정은 위 규칙이 정한다 */
 const canvasW = () => isFit() ? (S.canvas.width ?? CANVAS_W) : ratioCanvasW();
 const PREVIEW_ZOOMS = [.5, .67, .8, 1, 1.25, 1.5, 2, 3, 4];
@@ -3595,6 +3982,9 @@ function ensureNewsFont() {
 /* 제목은 적은 그대로 쓴다. 비워 두면 자리는 지키되 아무것도 안 적는다 —
    빈칸에 '이름' 같은 대신 글자를 넣으면 그것이 저장본에 그대로 찍힌다. */
 function headerNode(th) {
+  /* 프레임을 두르면 화면머리는 안 선다 — 머리는 캔버스 가장자리까지 나가는 띠라
+     [.cv-head 의 음수 여백] 껍데기 위로 올라타 창을 가로지른다. 둘 중 하나만 쓴다. */
+  if (frameKind(th) !== 'none') return null;
   const kind = headKind(th);
   if (kind === 'none') return null;
   const title = (th.headerTitle || '').trim();
@@ -3714,7 +4104,7 @@ function musicNode(b, th) {
      따라오게 한다 — 크기를 움직이면 폭만이 아니라 그림이 통째로 커지고 작아진다.
      (100% 가 캔버스를 꽉 채운 상태다. 그보다 크면 넘치므로 위로는 열지 않는다.) */
   const cvW = canvasW();
-  const inner = Math.max(40, cvW - (S.canvas.ml || 0) - (S.canvas.mr || 0));
+  const inner = Math.max(40, cvW - padL() - padR());
   const w = inner * clamp(b.scale ?? 100, 30, 100) / 100;
   d.style.width = w + 'px';
   d.style.fontSize = (w / MU_W_EM) + 'px';
@@ -3880,7 +4270,7 @@ function placeFlow(rows, items, H, avail, hold, topAlign, step) {
       n.style.marginLeft = (it.c * step) + 'px';
       n.dataset.pageCol = '1';
     }
-    const want = it.p * H + S.canvas.mt + hold + slack[it.p];
+    const want = it.p * H + padT() + hold + slack[it.p];
     /* 다음 단으로 넘어갈 때는 «위로» 올라간다 — 음수 여백이라 그대로 당겨 올린다.
        offsetTop 은 앞의 앉히기가 이미 반영된 지금 값이라, 차례로 더해도 어긋나지 않는다.
        (이어 말하기의 음수 위 여백[.blk.is-run]을 덮지 않고 더하는 것도 같은 이유다.) */
@@ -3996,8 +4386,8 @@ function splitTallRows(budget) {
 function pageBox() {
   /* 소수점이 살아 있으면 렌더마다 끝자리가 흔들려 높이가 미세하게 달라진다 — 정수로 못 박는다 */
   const w = Math.round($('#canvas').clientWidth) || 1;
-  const h = Math.round(w / (RATIOS[S.canvas.ratio] || 1));
-  return { w, h, inner: Math.max(1, h - S.canvas.mt - S.canvas.mb) };
+  const h = Math.round(w / (RATIOS[ratioKey()] || 1));
+  return { w, h, inner: Math.max(1, h - padT() - padB()) };
 }
 function pageRanges(hold = headHold + footHold) {
   const rows = flowRows();
@@ -4013,8 +4403,12 @@ function pageRanges(hold = headHold + footHold) {
 }
 function renderPageMarks() {
   const cv = $('#canvas');
-  cv.querySelectorAll('.pagemark, .foot-ghost, .head-ghost').forEach(n => n.remove());
+  cv.querySelectorAll('.pagemark, .foot-ghost, .head-ghost, .frame-ghost').forEach(n => n.remove());
   cv.querySelectorAll('.foot-pin, .head-pin').forEach(n => n.classList.remove('foot-pin', 'head-pin'));
+  /* 프레임 높이는 아래에서 «한 장» 으로 못 박는다 — CSS 의 100% 는 여러 장이면 쌓아 올린
+     전체 높이라, 창이 장 수만큼 늘어난 한 덩어리로 그려진다. */
+  const frame0 = cv.querySelector('.cv-frame');
+  if (frame0) frame0.style.removeProperty('height');
   clearPageOffsets(cv);
   cv.classList.remove('foot-pinned', 'head-pinned');
   cv.style.removeProperty('--foot-h');
@@ -4070,6 +4464,8 @@ function renderPageMarks() {
      저장은 장마다 캔버스를 새로 세워 그 장의 내용을 가운데에 놓는다 [exportPNG].
      미리보기도 같은 자리에 세운다 — 그러면 구분선은 그냥 장 경계(i×장높이)가 된다. */
   const box = pageBox(), H = box.h;
+  /* 프레임도 장마다 하나씩이다 — 첫 장은 진짜, 뒷장에는 사본을 같은 자리에 깐다 [머리·서명과 같은 수] */
+  if (frame0) frame0.style.height = H + 'px';
   const avail = Math.max(1, box.inner - headHold - footHold);
   const rows = flowRows();
   /* «위로» 면 장의 맨 위(위 여백 + 화면머리 몫)에서 바로 시작한다 — 남는 자리는 아래에 몰린다 */
@@ -4082,6 +4478,12 @@ function renderPageMarks() {
       const mk = el('div', 'pagemark');
       mk.style.top = (i * H) + 'px';
       cv.appendChild(mk);
+    }
+    if (frame0 && i) {
+      const g = frame0.cloneNode(true);
+      g.classList.add('frame-ghost');
+      g.style.top = (i * H) + 'px';
+      cv.appendChild(g);
     }
     /* 첫 장의 화면머리는 진짜(.head-pin)가 캔버스 맨 위에 서 있다 — 뒷장에만 사본을 깐다 */
     if (head && i) {
@@ -4098,7 +4500,7 @@ function renderPageMarks() {
       const g = foot.cloneNode(true);
       g.className = 'foot-ghost';
       g.removeAttribute('data-id');
-      g.style.top = ((i + 1) * H - S.canvas.mb - fh) + 'px';
+      g.style.top = ((i + 1) * H - padB() - fh) + 'px';
       cv.appendChild(g);
     }
   }
@@ -5717,10 +6119,14 @@ function buildImageEditor(host, block, initialSrc) {
    틀을 하나만 두고 머리말만 갈아 끼운다 — 자리마다 다른 자르기 창을 두면 손이 헤맨다. */
 function openAvatarModal(cur, onDone, opts) {
   const o = opts || {};
+  /* 틀의 비율과 구워 낼 크기는 부르는 쪽이 정한다 — 프로필·앨범 커버는 정사각 256 이지만
+     미니홈피 대문 사진은 4:3 이고 캔버스에서 훨씬 크게 나온다. 자르는 «일» 은 같으므로
+     창을 새로 만들지 않고 이 둘만 받는다. */
+  const R = o.ratio || '1:1', MAX = o.maxPx || 256;
   const p = modal(o.title || '캐릭터 이미지',
     o.sub || '정사각형으로 잘라 넣습니다. 끌어서 위치를 맞추세요.');
-  const crop = cropField(cur, '1:1');
-  crop._maxPx = 256;
+  const crop = cropField(cur, R);
+  crop._maxPx = MAX;
   const zoomWrap = el('div');
   zoomWrap.appendChild(el('span', 'lab', '확대'));
   const zoom = el('input', 'rng'); zoom.type = 'range'; zoom.step = '0.01';
@@ -5751,7 +6157,7 @@ function openAvatarModal(cur, onDone, opts) {
     const d = crop._export() || cur || '';
     closeModal();
     /* 프로필은 캔버스에서 28px, 앨범 커버도 50px 남짓이다 — 원본 해상도를 들고 있을 이유가 없다 */
-    shrinkImage(d, 256).then(onDone);
+    shrinkImage(d, MAX).then(onDone);
   };
   foot.append(rm, cancel, ok); p.appendChild(foot);
 }
@@ -6113,6 +6519,24 @@ function panelCanvas(p) {
   /* '설정' 은 도구 이름과 겹치고 '비율' 은 두 갈래 중 한쪽 이름이라 둘 다 제목으로는 못 쓴다.
      판형 — 한 장을 어떤 꼴로 뽑을지, 인쇄에서 쓰던 말 그대로다. */
   sec.appendChild(el('span', 'sec-lab', '판형'));
+  /* 프레임이 판형을 정해 버리는 테마가 있다 [FRAME_RATIO] — 그때는 고를 칸을 안 내놓는다.
+     흐리게 남겨 두면 눌리는 줄 알고 계속 누르게 되고, 왜 안 되는지도 알 길이 없다. */
+  const lockR = lockRatio();
+  if (lockR) {
+    const lseg = segment([[lockR, lockR + ' 고정']], lockR, () => { });
+    lseg.style.pointerEvents = 'none';
+    sec.appendChild(lseg);
+    const lnote = el('div', 'lab-sub');
+    lnote.style.margin = '9px 0 0';
+    lnote.textContent = '«' + (FRAMES.find(f => f[0] === frameKind(theme())) || [, ''])[1]
+      + '» 프레임이 판형을 정합니다 · 테마에서 프레임을 바꾸면 다시 고를 수 있습니다';
+    sec.appendChild(lnote);
+    const dv0 = el('div', 'divider'); dv0.style.margin = '16px 0';
+    sec.appendChild(dv0);
+    sec.appendChild(marginSection(c));
+    p.appendChild(sec);
+    return;
+  }
   sec.appendChild(segment([['fit', '내용 맞춤'], ['ratio', '비율 지정']], c.mode || 'ratio',
     v => { c.mode = v; save(); render(); }));
 
@@ -6149,7 +6573,13 @@ function panelCanvas(p) {
 
   const dv = el('div', 'divider'); dv.style.margin = '16px 0';
   sec.appendChild(dv);
+  sec.appendChild(marginSection(c));
+  p.appendChild(sec);
+}
 
+/* 캔버스 여백 — 판형이 잠겼든 아니든 늘 고칠 수 있어야 해서 따로 떼어 둔다.
+   프레임을 두르면 이 값은 «껍데기보다 더 들어갈 때만» 먹는다 [padT]. */
+function marginSection(c) {
   const mw = el('div');
   const head = el('div', 'row-between');
   const l = el('span', 'sec-lab', '캔버스 여백'); l.style.margin = '0';
@@ -6172,8 +6602,8 @@ function panelCanvas(p) {
     box.appendChild(stepH('위아래', c.mt, 0, 160, 2, v => { c.mt = c.mb = v; save(); renderCanvas(); }));
     box.appendChild(stepH('좌우', c.ml, 0, 160, 2, v => { c.ml = c.mr = v; save(); renderCanvas(); }));
   }
-  mw.appendChild(box); sec.appendChild(mw);
-  p.appendChild(sec);
+  mw.appendChild(box);
+  return mw;
 }
 
 function panelTheme(p) {
@@ -6222,6 +6652,40 @@ function panelTheme(p) {
   s.appendChild(grid);
   if (S.ui.editingThemeId) s.appendChild(themeEditor());
   p.appendChild(s);
+}
+
+/* 테마가 들고 있는 사진 한 장을 고르는 칸 — 아이메시지 화면머리와 미니홈피 대문이 함께 쓴다.
+   칸 이름은 사진 «옆» 이 아니라 «위» 다 — 옆에 두면 44px 짜리 단추 한가운데에 맞춰 떠서,
+   위의 '이름' 칸과 왼쪽 끝도 위아래 자리도 어긋난다. 위에 두면 이 구획의 다른 칸들과
+   같은 줄에서 시작한다. 옆에 남는 것은 «그래서 어떻게 되나» 뿐이다. */
+function themeAvatarField(t, opts) {
+  const o = opts || {};
+  const label = o.label || '프로필 사진';
+  const avBox = el('div');
+  avBox.appendChild(el('span', 'lab', label));
+  const row = el('div', 'row'); row.style.alignItems = 'center';
+  const avBtn = el('button', 'av-chip');
+  avBtn.style.cssText = 'width:44px;height:44px;flex:0 0 44px';
+  /* 정사각이 아니면 동그란 칩이 거짓말이 된다 — 모서리만 살짝 둥근 네모로 보여 준다 */
+  if (o.ratio && o.ratio !== '1:1') avBtn.style.borderRadius = '6px';
+  avBtn.title = label + ' 편집';
+  if (t.headerAvatar) { const i = el('img'); i.src = t.headerAvatar; avBtn.appendChild(i); }
+  else { avBtn.classList.add('is-pick'); avBtn.textContent = '✏️'; }
+  avBtn.onclick = () => openAvatarModal(t.headerAvatar, d => { t.headerAvatar = d; render(); }, o);
+  const side = el('div'); side.style.flex = '1';
+  if (t.headerAvatar) {
+    const clr = el('button', 'btn btn-quiet', '사진 지우기');
+    clr.onclick = () => { t.headerAvatar = ''; render(); };
+    side.appendChild(clr);
+  } else {
+    /* .hint 는 패널 «바깥» 여백(--pad)을 안고 있어 여기서는 혼자 안으로 들어가 보인다 —
+       칸 안에서 쓰는 잔글씨(.lab-sub)로 둔다. 다른 안내 줄과도 같은 결이 된다. */
+    side.appendChild(Object.assign(el('div', 'lab-sub'),
+      { textContent: o.hint || '없으면 회색 사람 모양이 들어갑니다' }));
+  }
+  row.append(avBtn, side);
+  avBox.appendChild(row);
+  return avBox;
 }
 
 function themeEditor() {
@@ -6302,15 +6766,73 @@ function themeEditor() {
   n.onchange = () => render();
   box.appendChild(n);
 
+  /* 프레임 — 캔버스 네 변을 두르는 껍데기 [FRAMES]. 테마명 바로 다음, 무엇보다 앞에 둔다:
+     이것을 고르는 순간 배경 이미지도 헤더도 함께 가려지므로 [headerNode], 아래 칸들이
+     무엇을 할 수 있는지가 여기서 정해진다. 뒤에 두면 «왜 이 칸이 사라졌지» 를 위로
+     거슬러 올라가며 찾게 된다 — 무엇이 무엇을 덮는지가 곧 차례다. */
+  box.appendChild(el('div', 'divider'));
+  box.appendChild(el('div', 'sec-title', '프레임'));
+  const frKind = frameKind(t);
+  const frBox = el('div', 'stack');
+  frBox.appendChild(segment(FRAMES, frKind, v => { t.frame = v; render(); }));
+  if (frKind !== 'none') {
+    frBox.appendChild(Object.assign(el('div', 'lab-sub'), {
+      textContent: frKind === 'cyworld'
+        ? '판형이 4:3 가로로 고정됩니다 · 본문은 오른쪽 쪽에만 흐릅니다'
+        : '본문이 창 안쪽에만 흐릅니다 · 판형은 그대로 고를 수 있습니다'
+    }));
+    const nw = el('div');
+    nw.appendChild(el('span', 'lab', frKind === 'cyworld' ? '미니홈피 주인' : '대화 상대'));
+    const ni = el('input', 'inp');
+    ni.value = t.headerTitle || '';
+    ni.placeholder = frKind === 'cyworld' ? '김라연' : '이제행복하다';
+    /* 적는 대로 캔버스에 비친다. render() 를 부르면 이 칸이 통째로 새로 그려져
+       치던 자리를 잃는다 — 캔버스만 다시 그린다. */
+    ni.oninput = () => { t.headerTitle = ni.value; up(); };
+    nw.appendChild(ni);
+    frBox.appendChild(nw);
+  }
+  if (frKind === 'cyworld') {
+    /* 왼쪽 쪽 맨 윗줄 — «TODAY IS ○○». 그 시절 미니홈피에서 기분을 적던 자리다.
+       비워 두면 «TODAY IS» 만 남는다. 길면 … 로 잘린다 [.mh-today]. */
+    const mdW = el('div');
+    mdW.appendChild(el('span', 'lab', 'TODAY IS'));
+    const mdI = el('input', 'inp');
+    mdI.value = t.frameMood || '';
+    mdI.placeholder = '그냥';
+    mdI.oninput = () => { t.frameMood = mdI.value; up(); };
+    mdW.appendChild(mdI);
+    frBox.appendChild(mdW);
+    /* 대문 사진 — 프로필·앨범 커버와 같은 자르기 창을 쓴다. 비율만 4:3 이다 [openAvatarModal] */
+    frBox.appendChild(themeAvatarField(t, {
+      label: '대문 사진', title: '미니홈피 대문 사진',
+      sub: '4:3 으로 잘라 넣습니다. 끌어서 위치를, 아래에서 크기를 맞추세요.',
+      hint: '없으면 회색 사람 모양이 들어갑니다',
+      ratio: '4:3', maxPx: 640
+    }));
+  }
+  box.appendChild(frBox);
+
   /* 배경 — «캔버스를 무엇으로 채우나» 를 한 구획에 모은다. 색 두 칸과 그 위에 까는
      이미지는 같은 것을 정한다 — 이미지는 색을 덮는 것이지 딴 이야기가 아니다.
      그래서 '배경 이미지' 는 구획 제목(.sec-title)이 아니라 '전체 배경' 과 같은 칸 이름(.lab)이다. */
   box.appendChild(el('div', 'divider'));
   box.appendChild(el('div', 'sec-title', '기본 배경'));
   const gBg = el('div', 'grid2');
-  gBg.appendChild(colorField('전체 배경', t.bg, v => { t.bg = v; up(); }));
+  /* 프레임을 두르면 이 색이 칠해지는 데는 캔버스 전체가 아니라 창 안쪽이다 [.fr-hole] —
+     이름도 그렇게 바꿔 준다. 고치는 값은 같은 t.bg 하나다. */
+  gBg.appendChild(colorField(frKind === 'none' ? '전체 배경' : '본문 배경', t.bg, v => { t.bg = v; up(); }));
   gBg.appendChild(colorField('전체 글자', t.fg, v => { t.fg = v; up(); }));
   box.appendChild(gBg);
+  /* 배경 이미지는 프레임 껍데기 아래로 완전히 가려진다 — 고를 칸을 아예 안 내놓는다.
+     («고를 수는 있는데 안 보이는» 칸은 고장으로 읽힌다.) 값은 지우지 않는다:
+     프레임을 도로 «없음» 으로 돌리면 깔아 두었던 그림이 그대로 살아난다. */
+  if (frKind !== 'none') {
+    const bgNote = el('div', 'lab-sub');
+    bgNote.style.marginTop = '11px';
+    bgNote.textContent = '프레임이 캔버스를 덮으므로 배경 이미지는 쓰지 않습니다.';
+    box.appendChild(bgNote);
+  } else {
   const bgiLab = el('span', 'lab', '배경 이미지');
   bgiLab.style.marginTop = '14px';
   box.appendChild(bgiLab);
@@ -6331,7 +6853,7 @@ function themeEditor() {
     const cvEl = $('#canvas');
     const ar = isFit()
       ? ((cvEl && cvEl.offsetHeight) ? cvEl.offsetWidth / cvEl.offsetHeight : 1)
-      : (RATIOS[S.canvas.ratio] || 1);
+      : (RATIOS[ratioKey()] || 1);
     const MAXH = 150, MAXW = 250;
     let pw = MAXH * ar, ph = MAXH;
     if (pw > MAXW) { pw = MAXW; ph = MAXW / ar; }
@@ -6384,7 +6906,11 @@ function themeEditor() {
     bg2.appendChild(colorField('덮는 색', t.bgOverlayColor || '#000000', v => { t.bgOverlayColor = v; up(); }));
     box.appendChild(bg2);
   }
+  }
 
+  /* 헤더 — 프레임을 두르면 아예 안 그려지므로 [headerNode] 고를 칸 자체를 안 내놓는다.
+     이름과 프로필 사진은 위의 프레임 구획이 이미 받아 갔다. */
+  if (frKind === 'none') {
   box.appendChild(el('div', 'divider'));
   box.appendChild(el('div', 'sec-title', '헤더'));
   const hdBox = el('div', 'stack');
@@ -6403,34 +6929,8 @@ function themeEditor() {
     tw.appendChild(ti);
     hdBox.appendChild(tw);
   }
-  /* 프로필 사진이 자리를 차지하는 것은 아이메시지뿐이다 — 나머지에서는 고를 이유가 없다.
-     칸 이름은 사진 «옆» 이 아니라 «위» 다 — 옆에 두면 44px 짜리 단추 한가운데에 맞춰
-     떠서, 위의 '이름' 칸과 왼쪽 끝도 위아래 자리도 어긋난다. 위에 두면 이 구획의 다른
-     칸들과 같은 줄에서 시작한다. 옆에 남는 것은 «그래서 어떻게 되나» 뿐이다. */
-  if (hdKind === 'imessage') {
-    const avBox = el('div');
-    avBox.appendChild(el('span', 'lab', '프로필 사진'));
-    const row = el('div', 'row'); row.style.alignItems = 'center';
-    const avBtn = el('button', 'av-chip');
-    avBtn.style.cssText = 'width:44px;height:44px;flex:0 0 44px';
-    avBtn.title = '프로필 사진 편집';
-    if (t.headerAvatar) { const i = el('img'); i.src = t.headerAvatar; avBtn.appendChild(i); }
-    else { avBtn.classList.add('is-pick'); avBtn.textContent = '✏️'; }
-    avBtn.onclick = () => openAvatarModal(t.headerAvatar, d => { t.headerAvatar = d; render(); });
-    const side = el('div'); side.style.flex = '1';
-    if (t.headerAvatar) {
-      const clr = el('button', 'btn btn-quiet', '사진 지우기');
-      clr.onclick = () => { t.headerAvatar = ''; render(); };
-      side.appendChild(clr);
-    } else {
-      /* .hint 는 패널 «바깥» 여백(--pad)을 안고 있어 여기서는 혼자 안으로 들어가 보인다 —
-         칸 안에서 쓰는 잔글씨(.lab-sub)로 둔다. 다른 안내 줄과도 같은 결이 된다. */
-      side.appendChild(Object.assign(el('div', 'lab-sub'), { textContent: '없으면 회색 사람 모양이 들어갑니다' }));
-    }
-    row.append(avBtn, side);
-    avBox.appendChild(row);
-    hdBox.appendChild(avBox);
-  }
+  /* 프로필 사진이 자리를 차지하는 것은 아이메시지뿐이다 — 나머지에서는 고를 이유가 없다 */
+  if (hdKind === 'imessage') hdBox.appendChild(themeAvatarField(t, {}));
   /* 머리 배경색 — 띠를 칠할 수 있는 것은 메시지1·2 다. 헤드라인은 신문 제호라 띠가 없다.
      토글 뒤에 숨기지 않는다 — 다른 색 칸들과 같은 «늘 있는 값» 이고, 무엇을 고르는지도
      칩을 봐야 안다. 아직 고른 적이 없으면 칩은 «자동» 색을 비춘다 [headerNode 의 .055 / A]:
@@ -6457,6 +6957,7 @@ function themeEditor() {
     hdBox.appendChild(bgW);
   }
   box.appendChild(hdBox);
+  }
   /* 글자 서식도 테마의 일부다. 예전에는 전역 서식과 테마별 서식이 같은 컨트롤로
      두 군데에 있어 값의 주인을 알기 어려웠다. 이제 테마에서 한 번만 설정한다. */
   box.appendChild(el('div', 'divider'));
@@ -7024,7 +7525,10 @@ function usedFonts() {
   const set = new Set([fmt().font]);
   S.blocks.forEach(b => { if (b.font) set.add(b.font); });
   /* 신문 머리는 테마 글꼴이 아니라 제 몫의 명조 둘로 찍힌다 [headerNode] — 임베드도 챙긴다 */
-  if (S.blocks.length && headKind(theme()) === 'news') Object.values(NEWS_FONT).forEach(n => set.add(n));
+  if (S.blocks.length && frameKind(theme()) === 'none' && headKind(theme()) === 'news')
+    Object.values(NEWS_FONT).forEach(n => set.add(n));
+  /* 프레임의 껍데기 글자도 제 몫의 도트 글꼴로 찍힌다 [FRAME_FONT] — 임베드도 함께 챙긴다 */
+  if (frameKind(theme()) !== 'none') set.add(FRAME_FONT);
   return [...set];
 }
 
@@ -7590,7 +8094,7 @@ async function exportPNG() {
   /* 미리보기용 표시만 걷어 낸다 — 못 박은 화면머리·서명(.head-pin/.foot-pin)과 그 자리
      (--head-h/--foot-h)는 저장할 그림 자체이므로 그대로 둔다. 구분선·사본·장마다 앉힌
      여백은 장을 이어 붙여 보여 주려던 것이고, 저장은 장마다 캔버스를 새로 세우므로 없어야 한다. */
-  cv.querySelectorAll('.pagemark, .foot-ghost, .head-ghost').forEach(n => n.remove());
+  cv.querySelectorAll('.pagemark, .foot-ghost, .head-ghost, .frame-ghost').forEach(n => n.remove());
   clearPageOffsets(cv);
   try {
     const hti = await loadHTI();

@@ -1767,6 +1767,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,
     <button type="button" class="btn btn-quiet" id="btnReset" title="초기화할 항목 선택">↺<span class="btn-word"> 초기화</span></button>
     <button type="button" class="btn btn-quiet" id="btnImport" title="내보낸 설정 파일 불러오기">↓<span class="btn-word"> 설정 불러오기</span></button>
     <button type="button" class="btn btn-quiet" id="btnExport" title="캐릭터·서식·캔버스·테마를 파일로">↑<span class="btn-word"> 설정 내보내기</span></button>
+    <button type="button" class="btn btn-quiet" id="btnDiag" title="최근 진단 정보 복사">⌁<span class="btn-word"> 진단 복사</span></button>
     <button type="button" class="btn btn-primary" id="btnSave" title="캔버스를 PNG 로 저장">🖼️<span class="btn-word"> 이미지 저장</span></button>
   </div>
 </header>
@@ -2174,6 +2175,34 @@ const S = {
 };
 
 const KEY = 'chat-excerpt/v1';
+/* ═══ 익명 진단 링버퍼 ═══════════════════════════════════════
+   본문·이미지·localStorage 내용은 기록하지 않는다. 사용자가 문제 직후 «진단 복사»를
+   누르면 이벤트 순서와 기기/뷰포트 수치만 전달할 수 있다. 서버로 자동 전송하지 않는다. */
+const DIAG_MAX = 160, _diag = [];
+function diag(event, data) {
+  const vv = window.visualViewport;
+  const rec = { t: Date.now(), e: String(event), w: innerWidth, h: innerHeight,
+    vw: vv ? Math.round(vv.width) : null, vh: vv ? Math.round(vv.height) : null,
+    ae: document.activeElement ? String(document.activeElement.id || document.activeElement.tagName || '') : '',
+    ...(data || {}) };
+  _diag.push(rec); if (_diag.length > DIAG_MAX) _diag.splice(0, _diag.length - DIAG_MAX);
+  try { if (location.hash.includes('debug')) console.debug('[diag]', rec); } catch (_) { }
+}
+function diagCopy() {
+  const out = JSON.stringify({ v: 1, at: new Date().toISOString(), ua: navigator.userAgent,
+    dpr: devicePixelRatio, events: _diag }, null, 2);
+  const done = () => toast('진단 정보를 복사했습니다 · 문제 상황과 함께 보내 주세요');
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(out).then(done).catch(() => diagCopyFallback(out, done));
+  } else diagCopyFallback(out, done);
+}
+function diagCopyFallback(out, done) {
+  const x = document.createElement('textarea'); x.value = out;
+  x.style.cssText = 'position:fixed;left:-9999px;top:0'; document.body.appendChild(x); x.select();
+  try { document.execCommand('copy'); done(); } catch (_) { toast('진단 정보 복사에 실패했습니다'); }
+  x.remove();
+}
+diag('boot');
 /* 기본값을 바꾸면 올린다. 저장본의 판이 낮으면 내용은 지키고 기본값만 새로 잡는다. */
 const SCHEMA = 11;
 /* 제작자 서명은 늘 블록 목록의 맨 끝이어야 한다.
@@ -2265,6 +2294,7 @@ const save = () => {
     localStorage.setItem(KEY, JSON.stringify({ v: SCHEMA, blocks: S.blocks, characters: S.characters, themes: S.themes, activeThemeId: S.activeThemeId, format: S.format, canvas: S.canvas, colors: S.colors }));
     _quotaWarned = false;
   } catch (e) {
+    diag('save:error', { name: e && e.name ? e.name : 'unknown' });
     console.error('저장 실패', e);
     if (_quotaWarned) return;
     _quotaWarned = true;
@@ -3145,6 +3175,7 @@ function restoreRangeObject(range) {
 function bindStickyTap(btn, run, hold) {
   let armed = false, sx = 0, sy = 0, ranAt = 0;
   btn.addEventListener('pointerdown', e => {
+    diag('button:pointerdown', { id: btn.id || '', kind: btn.textContent.trim().slice(0, 20) });
     armed = true; sx = e.clientX; sy = e.clientY;
     /* Android Chrome 에서 주소창·키보드가 움직이는 동안 pointerleave/pointercancel 이 먼저
        오는 기기가 있다. 명시적으로 붙잡아 손을 뗀 이벤트를 원래 단추로 돌려받는다. */
@@ -3152,6 +3183,7 @@ function bindStickyTap(btn, run, hold) {
     if (!hold || hold(e)) e.preventDefault();
   });
   btn.addEventListener('pointerup', e => {
+    diag('button:pointerup', { id: btn.id || '' });
     if (!armed) return;
     armed = false;
     /* 스크롤하려고 쓸어 내린 것은 누른 것이 아니다 */
@@ -3161,11 +3193,12 @@ function bindStickyTap(btn, run, hold) {
     ranAt = Date.now();
     run();
   });
-  btn.addEventListener('pointercancel', () => { armed = false; });
+  btn.addEventListener('pointercancel', () => { diag('button:pointercancel', { id: btn.id || '' }); armed = false; });
   /* 키보드로 누른 click(detail 0) 만 받는다. 포인터로 생긴 click 은 위에서 이미 처리했다 —
      또 실행하면 방금 한 일이 곧바로 되돌아간다. 서식 단추는 누를 때마다 다시 그려지므로,
      같은 자리에 새로 생긴 단추가 그 click 을 대신 받는 경우까지 함께 막는다. */
   btn.addEventListener('click', e => {
+    diag('button:click', { id: btn.id || '', detail: e.detail });
     if (btn.disabled) return;
     /* pointerup 이 실제로 실행된 경우만 중복 click 을 막는다. 예전의 전역 포인터 플래그는
        Android 가 pointerup 을 취소한 뒤 보내는 정상 click 까지 막아 단추를 완전히 죽였다. */
@@ -3445,12 +3478,14 @@ function initComposer() {
   });
   /* 붙여넣기는 글자만 받는다. 웹에서 복사한 태그가 들어오면 되읽을 때 엉뚱한 서식으로 굳는다. */
   ta.addEventListener('paste', e => {
+    diag('paste:start');
     /* 사진을 복사해 붙여넣은 것이면 글이 아니라 이미지 블록으로 받는다 */
     const img = imageFileOf(e.clipboardData);
     if (img) { e.preventDefault(); readImageFile(img, d => startNew('image', d)); return; }
     e.preventDefault();
     const text = ((e.clipboardData || window.clipboardData) || { getData: () => '' }).getData('text/plain') || '';
-    const sel = window.getSelection(); if (!sel || !sel.rangeCount) return;
+    diag('paste:text-ready', { n: String(text).length });
+    const sel = window.getSelection(); if (!sel || !sel.rangeCount) { diag('paste:no-selection'); return; }
     const r = sel.getRangeAt(0); r.deleteContents();
     const frag = document.createDocumentFragment();
     String(text).split('\n').forEach((line, i) => {
@@ -3460,6 +3495,7 @@ function initComposer() {
     r.insertNode(frag); r.collapse(false);
     sel.removeAllRanges(); sel.addRange(r);
     ta.dispatchEvent(new Event('input', { bubbles: true }));
+    diag('paste:inserted', { n: String(text).length });
   });
 }
 
@@ -3664,6 +3700,7 @@ function frameNode(th) {
 const RATIOS = { '9:16': 9 / 16, '3:4': 3 / 4, '1:1': 1, '4:3': 4 / 3, '16:9': 16 / 9 };
 
 function renderCanvas() {
+  const renderAt = performance.now(); diag('render:start', { blocks: S.blocks.length });
   const cv = $('#canvas'), th = theme(), f = fmt();
   /* 이전 렌더의 중앙 정렬과 서명 자리가 페이지 높이 계산에 섞이지 않게 먼저 푼다. */
   cv.classList.remove('ratio-center', 'foot-pinned');
@@ -3835,6 +3872,7 @@ function renderCanvas() {
   }
   fitCanvas();
   ensureCanvasFonts();
+  diag('render:done', { blocks: S.blocks.length, ms: Math.round(performance.now() - renderAt) });
 }
 
 /* 지금 캔버스가 쓰는 글꼴의 스타일시트를 그 자리에서 받는다.
@@ -5214,6 +5252,7 @@ function junkStrip(root, kinds) {
 /* 올리기 직전에 한 번 묻는다. 걸리는 것이 없으면 그냥 올린다 — 평소에는 아무 일도 없다. */
 function commitWithCleanup() {
   const ta = $('#ta');
+  diag('commit-with-cleanup:start', { n: (ta.value || '').length, blocks: S.blocks.length });
   /* 묻는 자리는 «밖에서 복사해 온 글이 처음 들어오는 곳» 하나뿐이다 — 곧 새 블록을 적는
      기본 작성창이다. 이미 올린 블록을 고치는 중에는 묻지 않는다: 그 글은 올릴 때 한 번
      걸러졌고, 고치는 중에 또 물으면 일부러 남겨 둔 따옴표·별표까지 다시 걷어내게 된다. */
@@ -5245,6 +5284,7 @@ function commitWithCleanup() {
 
 function commit() {
   const ta = $('#ta'), raw = ta.value;
+  diag('commit:start', { n: raw.length, paragraphs: raw.split(/\n\s*\n/).filter(s => s.trim()).length, blocks: S.blocks.length });
   const b = selBlock();
   if (b) {                       /* 편집은 실시간 반영이라 여기서는 끝내기만 한다 */
     if (b.type === 'html') { b.src = raw.trim(); expandBlock(b); }
@@ -5254,7 +5294,7 @@ function commit() {
     }
     save(); setStage('composer'); return;
   }
-  if (!raw.trim()) return;
+  if (!raw.trim()) { diag('commit:empty'); return; }
   if (S.ui.insertMode === 'html') {
     /* src 는 «적은 그대로», text 는 «CSS 를 굳힌 것». 고칠 때는 src 를 다시 펴 보여 주고,
        캔버스와 저장본은 text 를 쓴다 [expandHtml / blockSource]. */
@@ -5264,7 +5304,8 @@ function commit() {
   } else raw.split(/\n\s*\n/).map(s => s.trim()).filter(Boolean)
     .forEach(text => S.blocks.push({ id: uid(), type: 'text', text }));
   /* 문단마다 전체 localStorage를 다시 쓰지 않고 대량 붙여넣기도 한 번만 저장한다. */
-  save();
+  diag('blocks:created', { total: S.blocks.length });
+  save(); diag('save:done', { blocks: S.blocks.length });
   ta.value = ''; autoGrow();
   backToDefault();            /* 올렸으면 끝난 일이다 — HTML 을 적던 중이어도 기본으로 */
 }
@@ -8895,7 +8936,7 @@ function renderFoot() {
     label = '확인'; act = () => setStage('composer');
   } else {
     label = '↑ 캔버스에 올리기';
-    act = () => commitWithCleanup();
+    act = () => { diag('commit-button:activate'); commitWithCleanup(); };
     on = $('#ta').value.trim().length > 0;
   }
   const btn = el('button', 'btn btn-primary', label);
@@ -9263,6 +9304,7 @@ let suppressBlockTapUntil = 0;
 
 /* ── 이벤트 ──────────────────────────────────────────────── */
 $('#ta').addEventListener('input', () => {
+  diag('composer:input', { n: ($('#ta').value || '').length });
   /* 다 지워도 브라우저가 <br> 을 남겨 :empty 가 풀린다 — placeholder 가 안 보인다 */
   const ed = $('#ta');
   normalizeComposerFontSizes();
@@ -9359,6 +9401,7 @@ bindStickyTap(NAV_BTN, () => {
 });
 $('#btnSave').onclick = () => exportPNG();
 $('#btnExport').onclick = () => openExportModal();
+$('#btnDiag').onclick = () => { diag('diagnostics:copy'); diagCopy(); };
 $('#btnImport').onclick = () => $('#settingsPick').click();
 $('#btnReset').onclick = openResetModal;
 /* 기어는 작성창 바로 옆에 붙어 있어, 글을 쓰다가 키보드가 열린 채로 누른다.
@@ -9396,6 +9439,7 @@ document.querySelectorAll('.tab').forEach(t => t.onclick = () => {
    서는지도 폭만 본다. 높이는 --app-vh · --sheet-h 가 따로 맡는다 [syncViewportVars]. */
 let _rz, _rzW = window.innerWidth, _rzPending = false;
 window.addEventListener('resize', () => {
+  diag('viewport:resize');
   autoGrow(); measureSheet();
   const nextW = window.innerWidth;
   /* 키보드가 뜬 동안 Android Chrome 은 세로 스크롤바·주소창 정산으로 layout viewport 폭도

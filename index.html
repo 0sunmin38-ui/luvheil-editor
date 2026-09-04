@@ -835,6 +835,10 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,
    잘라낸 만큼 상자가 홀쭉해지므로 그 몫을 위아래 여백으로 돌려준다. 그러면 행간은
    «줄 사이» 만, 여백은 «말풍선 안쪽» 만 맡아 손잡이 둘이 서로 안 얽힌다.
    못 알아듣는 브라우저는 이 블록을 통째로 건너뛰고 위의 .6em 여백만 쓴다 — 예전 모습 그대로다. */
+/* Android Chrome 은 text-box-trim 지원을 보고하면서도 여러 줄 상자의 배경·높이를 첫 줄로
+   잘라 그리는 버전이 있다. 지원 여부만으로는 안전성을 가릴 수 없으므로, 터치 기기에서는
+   실험 속성을 쓰지 않는다. 기본 .6em/.92em 여백은 모든 브라우저에서 같은 상자 높이를 만든다. */
+@media (hover:hover) and (pointer:fine) {
 @supports (text-box-trim: trim-both) {
   .blk-bubble .bub:not(.as-quote):not(.as-plain){
     text-box: trim-both cap alphabetic;
@@ -850,6 +854,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,
        비율 하나로 두면 어느 크기에서도 같은 꼴이다(좌우가 위아래의 1.14배). */
     padding-inline:1.05em;
   }
+}
 }
 /* 인용 + 프로필 이미지 ─────────────────────────────────────
    · 사진은 글과 «위쪽» 에서 맞춘다. 가운데로 두면 여러 줄일 때 사진이 글 한복판까지
@@ -3136,16 +3141,14 @@ function restoreRangeObject(range) {
    들어갔다. 선택 영역이 살아 있을 때는 pointerdown 의 기본 동작(포커스 이동)을 막고,
    click 을 기다리지 않고 손을 뗄 때 바로 실행한다.
    터치 포인터는 암묵적으로 캡처되므로, 그 사이 화면이 움직여도 pointerup 은 이 단추로 온다. */
-/* 이 브라우저가 포인터 이벤트를 실제로 보내는가. 한 번이라도 왔으면 아래 단추들은
-   pointerup 으로 동작하므로, 뒤따라 오는 click 은 흘려 보내야 한 번 누른 것이 두 번 먹지 않는다.
-   포인터 이벤트가 아예 없는 환경에서는 click 이 유일한 길이라 그대로 받는다. */
-let sawPointerEver = false;
-document.addEventListener('pointerdown', () => { sawPointerEver = true; }, true);
-
+/* pointerup 으로 먼저 동작하되, 그 길이 취소된 환경에서는 뒤따르는 click 을 안전망으로 쓴다. */
 function bindStickyTap(btn, run, hold) {
   let armed = false, sx = 0, sy = 0, ranAt = 0;
   btn.addEventListener('pointerdown', e => {
     armed = true; sx = e.clientX; sy = e.clientY;
+    /* Android Chrome 에서 주소창·키보드가 움직이는 동안 pointerleave/pointercancel 이 먼저
+       오는 기기가 있다. 명시적으로 붙잡아 손을 뗀 이벤트를 원래 단추로 돌려받는다. */
+    try { btn.setPointerCapture(e.pointerId); } catch (_) { }
     if (!hold || hold(e)) e.preventDefault();
   });
   btn.addEventListener('pointerup', e => {
@@ -3158,13 +3161,15 @@ function bindStickyTap(btn, run, hold) {
     ranAt = Date.now();
     run();
   });
-  ['pointercancel', 'pointerleave'].forEach(ev => btn.addEventListener(ev, () => { armed = false; }));
+  btn.addEventListener('pointercancel', () => { armed = false; });
   /* 키보드로 누른 click(detail 0) 만 받는다. 포인터로 생긴 click 은 위에서 이미 처리했다 —
      또 실행하면 방금 한 일이 곧바로 되돌아간다. 서식 단추는 누를 때마다 다시 그려지므로,
      같은 자리에 새로 생긴 단추가 그 click 을 대신 받는 경우까지 함께 막는다. */
   btn.addEventListener('click', e => {
     if (btn.disabled) return;
-    if (sawPointerEver && (e.detail !== 0 || Date.now() - ranAt < 700)) return;
+    /* pointerup 이 실제로 실행된 경우만 중복 click 을 막는다. 예전의 전역 포인터 플래그는
+       Android 가 pointerup 을 취소한 뒤 보내는 정상 click 까지 막아 단추를 완전히 죽였다. */
+    if (Date.now() - ranAt < 700) return;
     run();
   });
 }
@@ -8029,8 +8034,8 @@ async function oneFontEmbedCSS(name, text, weights) {
    안에서 레이아웃을 처음부터 다시 하기 때문이다. 임베드한 글꼴이 화면에 쓰인 것과
    조금만 달라도 줄바꿈 자리가 바뀐다.
    데스크톱에서는 화면에서 실제로 줄이 넘어간 자리를 재서 클론에 <br> 로 박고 pre 로
-   고정한다. iOS Safari 는 Range 측정이 글자 단위 줄바꿈처럼 어긋나는 경우가 있어,
-   저장 폰트를 먼저 붙인 뒤 CSS 의 word-break:keep-all 흐름을 그대로 쓰게 둔다. */
+   고정한다. iOS Safari 와 Android Chrome 은 Range 측정이 실제 줄바꿈과 어긋나는 경우가
+   있어, 저장 폰트를 먼저 붙인 뒤 화면과 같은 CSS 줄바꿈 흐름을 그대로 쓰게 둔다. */
 const FLOW_SEL = '.blk-text, .bub, .blk-footer, .blk-html';
 
 function nodePath(node, root) {
@@ -8210,9 +8215,9 @@ function captureCloneAt(cv) {
         ['height', 'min-height', 'max-height'].forEach(k => c.style.setProperty(k, r.height.toFixed(2) + 'px', 'important'));
       }
     }
-    /* iOS Safari 에서는 글자별 Range 로 찾아낸 soft wrap 을 <br> 로 굳히는 순간,
-       화면의 단어 기준 줄바꿈과 달리 저장본이 글자 단위로 끊겨 보일 수 있다.
-       위에서 폭과 높이는 이미 고정했으므로 iOS 는 CSS 줄바꿈 규칙을 그대로 타게 둔다. */
+    /* 손안 브라우저에서는 글자별 Range 로 찾아낸 soft wrap 을 <br> 로 굳히는 순간,
+       화면과 다른 자리에서 끊기거나 긴 줄이 상자 밖으로 넘을 수 있다.
+       위에서 폭과 높이는 이미 고정했으므로 CSS 줄바꿈 규칙을 그대로 타게 둔다. */
     if (!shouldFreezeSoftBreaks()) continue;
     /* HTML 카드는 이미 div·flex·br 로 자체 줄과 구조를 가진다. 일반 문장처럼 모든
        soft wrap 을 <br> 로 굳히고 white-space:pre 를 상속시키면 내부 레이아웃이 늘어나
@@ -8254,7 +8259,12 @@ function usedWeights(node) {
 const withTimeout = (p, ms, val) => Promise.race([Promise.resolve(p), new Promise(r => setTimeout(() => r(val), ms))]);
 const isIOS = () => /iPad|iPhone|iPod/i.test(navigator.userAgent || '')
   || (navigator.platform === 'MacIntel' && (navigator.maxTouchPoints || 0) > 1);
-const shouldFreezeSoftBreaks = () => !isIOS();
+const isAndroid = () => /Android/i.test(navigator.userAgent || '');
+/* Android Chrome 도 iOS Safari 와 마찬가지로 글자 단위 Range 의 줄 경계를 화면과 다르게
+   돌려주는 기기가 있다. 그 잘못 잰 위치에 <br> 를 박고 white-space:pre 로 자동 줄바꿈까지
+   끄면, 저장본에서만 한 줄이 고정 폭 말풍선 밖으로 넘친다. 손안 브라우저에서는 복제본에
+   못 박아 둔 폭·타이포와 임베드 글꼴로 CSS 줄바꿈을 다시 하게 두는 쪽이 화면과 같다. */
+const shouldFreezeSoftBreaks = () => !isIOS() && !isAndroid();
 async function ensureFontsLoaded(node) {
   if (!document.fonts || !document.fonts.load) return;
   const sample = fontSample(node);
@@ -9378,11 +9388,18 @@ document.querySelectorAll('.tab').forEach(t => t.onclick = () => {
    붙박이라서다.
    폭이 그대로면 다시 그릴 이유도 없다 — 캔버스 크기도(비율·고정폭) 패널의 한 줄에 몇 개가
    서는지도 폭만 본다. 높이는 --app-vh · --sheet-h 가 따로 맡는다 [syncViewportVars]. */
-let _rz, _rzW = window.innerWidth;
+let _rz, _rzW = window.innerWidth, _rzPending = false;
 window.addEventListener('resize', () => {
   autoGrow(); measureSheet();
-  if (window.innerWidth === _rzW) return;   /* 키보드·주소창이 오르내린 것뿐이다 */
-  _rzW = window.innerWidth;
+  const nextW = window.innerWidth;
+  /* 키보드가 뜬 동안 Android Chrome 은 세로 스크롤바·주소창 정산으로 layout viewport 폭도
+     몇 px 바꿀 수 있다. 입력칸이 살아 있는 동안에는 DOM 을 갈지 않고, 키보드가 내려간 뒤
+     마지막 폭으로 한 번만 맞춘다. 회전 중 입력 중이어도 포커스를 잃게 만들지 않는다. */
+  const active = document.activeElement;
+  const editing = !!(active && active.matches && active.matches('input,textarea,select,[contenteditable="true"]'));
+  if (editing) { _rzW = nextW; _rzPending = true; return; }
+  if (nextW === _rzW && !_rzPending) return;
+  _rzW = nextW; _rzPending = false;
   closePop();
   fitCanvas();                       /* 남는 폭이 달라지면 축소율도 달라진다 */
   clearTimeout(_rz);

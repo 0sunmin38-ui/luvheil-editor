@@ -8435,6 +8435,50 @@ try {
   }
 } catch (_) { }
 autoGrow();
+
+/* ── 진단용 뷰포트 자[#debug-vp] ──────────────────────────────
+   주소 끝에 «#debug-vp» 를 붙였을 때만 만들어진다 — 평소에는 이 안으로 들어오지도 않는다.
+   안드로이드에서 «키보드가 올라오다 닫히는» 것을 눈으로 재기 위한 자다. 셋을 함께 적는다.
+     win  — 창 높이가 실제로 줄었는가(= window resize 가 오는가). 이게 오르내리면
+            resize 처리기가 패널을 다시 그려 입력칸을 죽인 것이다.
+     vv   — 보이는 영역만 줄었는가. win 은 그대로인데 vv 만 줄면 창은 안 변한 것이다.
+     살아있음 — 포커스를 준 그 칸이 아직 DOM 에 있는가. N 으로 바뀐 시점이 범인의 시각이다.
+   무엇이 «먼저» 일어나는지가 원인을 가른다. 시각은 focusin 을 0 으로 잡은 상대 시간이다. */
+if (/debug-vp/.test(location.hash + location.search)) (function initVpDebug() {
+  const box = el('div');
+  box.style.cssText = 'position:fixed;left:0;right:0;top:0;z-index:9999;pointer-events:none;'
+    + 'font:11px/1.35 ui-monospace,Menlo,monospace;white-space:pre;color:#0f0;'
+    + 'background:rgba(0,0,0,.82);padding:4px 6px';
+  document.body.appendChild(box);
+  let rz = 0, vvr = 0, watched = null, t0 = Date.now();
+  const log = [];
+  const push = s => { log.unshift(String(Date.now() - t0).padStart(5) + 'ms ' + s); log.splice(6); };
+  const name = n => n ? (n.tagName + (n.className ? '.' + String(n.className).split(' ')[0] : '')) : '-';
+  const paint = () => {
+    const vv = window.visualViewport;
+    box.textContent =
+      'win ' + innerWidth + 'x' + innerHeight + '  rz' + rz + '\n'
+      + (vv ? 'vv  ' + Math.round(vv.width) + 'x' + Math.round(vv.height)
+              + ' top' + Math.round(vv.offsetTop) + '  vvr' + vvr + '\n' : '')
+      + 'focus ' + name(document.activeElement)
+      + (watched ? '  살아있음:' + (watched.isConnected ? 'Y' : 'N') : '') + '\n'
+      + log.join('\n');
+  };
+  addEventListener('resize', () => { rz++; push('resize ' + innerWidth + 'x' + innerHeight); paint(); });
+  if (window.visualViewport)
+    visualViewport.addEventListener('resize', () => {
+      vvr++; push('vv-resize ' + Math.round(visualViewport.height)); paint();
+    });
+  document.addEventListener('focusin', e => {
+    t0 = Date.now(); log.length = 0; watched = e.target;
+    push('focusin ' + name(e.target)); paint();
+  });
+  document.addEventListener('focusout', e => {
+    push('focusout ' + name(e.target) + ' 살아있음:' + (e.target.isConnected ? 'Y' : 'N')); paint();
+  });
+  setInterval(paint, 200);
+  paint();
+})();
 </script>
 </body>
 </html>

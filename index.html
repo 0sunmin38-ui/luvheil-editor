@@ -659,13 +659,19 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,
 .fr-cyworld .mh-today{color:#7FA9B4;letter-spacing:.3px;overflow:hidden;text-overflow:ellipsis}
 .fr-cyworld .mh-today b{color:#3A3A3A;font-weight:700}
 /* 프로필 사진 — 네모다. 미니홈피의 대문 사진은 동그랗게 깎이지 않았다. */
+/* 높이를 aspect-ratio 로 두지 않는다 — 판형이 4:3 으로 못 박혀 있어 [FRAME_RATIO] 이 자리는
+   늘 156×117 이고, 저장은 SVG foreignObject 안에서 배치를 처음부터 다시 하는 일이라
+   [renderExact] 최신 CSS 하나에 기대면 그 엔진에서만 높이가 0 으로 접힐 여지가 남는다.
+   («왼쪽 쪽 178 − 안쪽 여백 20 = 156» 의 4:3 이 117 이다.) */
 .fr-cyworld .mh-photo{
-  width:100%;aspect-ratio:4/3;border:1px solid #D9E6E9;background:#EEF6F8;
+  width:100%;height:117px;border:1px solid #D9E6E9;background:#EEF6F8;
   display:grid;place-items:center;overflow:hidden;flex:0 0 auto;
 }
 .fr-cyworld .mh-photo img{width:100%;height:100%;object-fit:cover;display:block}
 .fr-cyworld .mh-photo svg{width:44%;height:auto;fill:#C4D9DE}
-.fr-cyworld .mh-mood{color:#3A3A3A;font-size:12px;overflow:hidden;text-overflow:ellipsis}
+/* 이름은 사진에서 한 뼘 떨어뜨린다 — 쪽의 다른 줄 사이(7px)와 같은 간격으로 붙여 두면
+   사진에 딸린 설명처럼 읽힌다. 이름은 사진 «아래» 가 아니라 그 다음 줄이다. */
+.fr-cyworld .mh-mood{color:#3A3A3A;font-size:12px;margin-top:6px;overflow:hidden;text-overflow:ellipsis}
 .fr-cyworld .mh-edit{color:#9AB4BA;letter-spacing:.4px}
 .fr-cyworld .mh-wave{
   height:22px;padding:0 7px;justify-content:space-between;color:#6F7A7D;
@@ -7906,27 +7912,68 @@ function waitForImages(root) {
    SVG foreignObject 안에서는 다시 디코드하지 못해, 저장 결과에서 <img> 만 투명하게 빠질
    때가 있다. 캡처용 복제본에 한해 이미 디코드된 픽셀을 PNG data URL 로 다시 구워 넣는다.
    원본 상태는 건드리지 않으므로 기존에 등록해 둔 이미지에도 바로 적용된다. */
+/* 그림 하나가 «그릴 수 있는 상태» 가 될 때까지 기다린다. 이미 되어 있으면 그 자리에서 돌아온다.
+   기다리는 데 끝은 있어야 한다 — 안 오는 그림 하나 때문에 저장 전체가 멎으면 안 된다. */
+const IMG_BAKE_WAIT = 6000;
+function whenDrawable(img) {
+  if (img.complete && img.naturalWidth && img.naturalHeight) return Promise.resolve(true);
+  return new Promise(res => {
+    let done = false;
+    const fin = ok => { if (!done) { done = true; res(!!(ok && img.naturalWidth && img.naturalHeight)); } };
+    img.addEventListener('load', () => fin(true), { once: true });
+    img.addEventListener('error', () => fin(false), { once: true });
+    setTimeout(() => fin(false), IMG_BAKE_WAIT);
+  });
+}
+/* 그려 낸 픽셀을 PNG data URL 로. 못 그리면 빈 문자열이다. 긴 변은 4096 으로 묶는다. */
+function pngDataURL(src, w, h) {
+  const k = Math.min(1, 4096 / Math.max(w, h));
+  const cv = document.createElement('canvas');
+  cv.width = Math.max(1, Math.round(w * k));
+  cv.height = Math.max(1, Math.round(h * k));
+  const g = cv.getContext('2d');
+  if (!g) return '';
+  g.drawImage(src, 0, 0, cv.width, cv.height);
+  const png = cv.toDataURL('image/png');
+  return (png && png !== 'data:,') ? png : '';
+}
+/* 주소를 새 Image 로 다시 받아 굽는다 — 복제본의 <img> 가 끝내 안 실릴 때의 두 번째 길이다 */
+function bakeFromSrc(src) {
+  return new Promise(res => {
+    const im = new Image();
+    let done = false;
+    const fin = v => { if (!done) { done = true; res(v); } };
+    im.onload = () => { try { fin(pngDataURL(im, im.naturalWidth, im.naturalHeight)); } catch (_) { fin(''); } };
+    im.onerror = () => fin('');
+    setTimeout(() => fin(''), IMG_BAKE_WAIT);
+    im.src = src;
+  });
+}
+/* 저장용 복제본의 <img> 를 «화면에 있는 그 픽셀» 그대로 PNG 로 다시 굽는다.
+   [왜 굽나] iOS 사파리는 화면에서 멀쩡히 보이던 WebP·HEIC·data URL 도 html-to-image 가
+   세우는 SVG foreignObject 안에서는 다시 디코드하지 못하고, 저장 결과에서 그 <img> 만
+   투명하게 빠진다. 자르기 창이 내놓는 그림이 WebP 라[encodeCanvas] 정면으로 걸리는 자리다.
+   [«가끔» 의 정체] 예전에는 복제본의 그림이 아직 안 실렸으면(complete=false) 그 자리에서
+   조용히 포기하고 원본 WebP 를 그대로 두었다 — 그러면 iOS 에서 그 한 장만 투명하게 빠진다.
+   그림이 클수록 «아직 안 실린» 창이 넓어지므로(미니홈피 대문 사진은 640px·300KB 를 넘는다)
+   같은 그림이 어떤 날은 나오고 어떤 날은 빠졌다.
+   이제는 실릴 때까지 기다렸다 굽고, 그래도 안 되면 주소를 새로 받아 한 번 더 굽는다.
+   그마저 실패하면 조용히 넘기지 않고 콘솔에 남긴다 — 안 보이는 실패는 고칠 수가 없다. */
 async function bakeImagesForExport(root) {
   const imgs = [...root.querySelectorAll('img')];
   await Promise.all(imgs.map(async img => {
+    const src = img.src || '';
+    if (!src) return;
+    let png = '';
     try {
-      if (!img.complete || !img.naturalWidth || !img.naturalHeight) return;
-      const maxSide = 4096;
-      const k = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
-      const cv = document.createElement('canvas');
-      cv.width = Math.max(1, Math.round(img.naturalWidth * k));
-      cv.height = Math.max(1, Math.round(img.naturalHeight * k));
-      const g = cv.getContext('2d');
-      if (!g) return;
-      g.drawImage(img, 0, 0, cv.width, cv.height);
-      const png = cv.toDataURL('image/png');
-      if (!png || png === 'data:,') return;
-      img.src = png;
-      if (img.decode) await img.decode().catch(() => { });
-    } catch (e) {
-      /* 외부 HTML 안의 CORS 이미지처럼 캔버스에 못 그리는 항목은 기존 경로에 맡긴다. */
-      console.warn('저장용 이미지 PNG 변환 실패 — 원본 사용', e);
-    }
+      if (await whenDrawable(img)) png = pngDataURL(img, img.naturalWidth, img.naturalHeight);
+    } catch (e) { png = ''; }
+    /* 복제본의 <img> 로 못 그렸을 때의 두 번째 길. 외부 HTML 안의 CORS 이미지처럼
+       캔버스를 오염시키는 것은 여기서도 실패하므로, 그때는 원본을 그대로 싣는다. */
+    if (!png) { try { png = await bakeFromSrc(src); } catch (_) { png = ''; } }
+    if (!png) { console.warn('저장용 이미지 PNG 변환 실패 — 원본을 그대로 싣습니다', src.slice(0, 48)); return; }
+    img.src = png;
+    if (img.decode) await img.decode().catch(() => { });
   }));
 }
 

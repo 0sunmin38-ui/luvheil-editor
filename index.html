@@ -2,6 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
+<meta name="color-scheme" content="light only">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>채팅 발췌기</title>
 <link rel="preconnect" href="https://cdn.jsdelivr.net">
@@ -45,7 +46,7 @@
 }
 
 *,*::before,*::after{box-sizing:border-box}
-html,body{margin:0;padding:0;height:100%}
+html,body{margin:0;padding:0;height:100%;color-scheme:light only}
 body{
   font-family:var(--font); font-size:var(--fs-body); color:var(--text-strong);
   background:var(--surface); -webkit-text-size-adjust:none; text-size-adjust:none;
@@ -918,6 +919,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,
    --tail-w = 그림 폭(꼬리 크기의 배수) · --tail-ar = 그림 원래 세로/가로 비 */
 .blk-bubble .bub.has-tail.t-img::before{
   content:"";position:absolute;z-index:-1;bottom:0;
+  visibility:var(--tail-hide,visible);
   left:calc(var(--tail-size,5px) * var(--tail-w,1.6) * -1 + 2px + var(--tail-x,0px));
   margin-bottom:var(--tail-y,0px);
   width:calc(var(--tail-size,5px) * var(--tail-w,1.6));
@@ -941,6 +943,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,
 }
 .blk-bubble .bub.has-tail.t-dot::before{
   content:"";position:absolute;z-index:-1;
+  visibility:var(--tail-hide,visible);
   bottom:1px;
   left:calc(var(--tail-size,5px) * -2 + var(--tail-x,0px));
   margin-bottom:var(--tail-y,0px);
@@ -8808,6 +8811,11 @@ async function exportPNG() {
         const bubbles = [...cv.querySelectorAll('.bub')];
         const savedOverflow = bubbles.map(b => b.style.overflow);
         bubbles.forEach(b => b.style.setProperty('overflow', 'hidden', 'important'));
+        /* 말풍선 꼬리 숨김 — SVG foreignObject 에서 z-index:-1 + isolation:isolate 조합이
+           제대로 작동하지 않아, 꼬리가 캔버스 배경 뒤로 새어 프로필 아이콘 앞에 보인다.
+           내보내기 시 꼬리를 숨기고 말풍선만 보이게 한다. */
+        const tails = [...cv.querySelectorAll('.bub.has-tail')];
+        tails.forEach(b => b.style.setProperty('--tail-hide', 'hidden'));
         try {
           await raf2();
           const w = Math.ceil(cv.offsetWidth), h = Math.ceil(cv.offsetHeight);
@@ -8820,6 +8828,7 @@ async function exportPNG() {
             if (savedOverflow[i]) b.style.overflow = savedOverflow[i];
             else b.style.removeProperty('overflow');
           });
+          tails.forEach(b => b.style.removeProperty('--tail-hide'));
         }
       }
       const snap = captureClone(cv);

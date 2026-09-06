@@ -4379,10 +4379,10 @@ function headerNode(th) {
     const markText = (th.headerMark ?? '').trim() || NEWS_MARK;
     const mark = Object.assign(el('div', 'hd-mast'), { textContent: markText });
     mark.style.fontFamily = '"' + NEWS_FONT.mark + '", "' + NEWS_FONT.markKo + '", serif';
-    /* 제호 크기는 64px 로 고정한다 — 가변으로 두면 글자 수에 따라 너무 커지거나 작아진다.
+    /* 제호 크기는 56px 로 고정한다 — 가변으로 두면 글자 수에 따라 너무 커지거나 작아진다.
        긴 제호는 폭을 넘기므로 scaleX 로 눌러서 맞춘다 [아래 transform]. */
     const markEmW = markWidthEm(markText);
-    const mastPx = 64;
+    const mastPx = 56;
     mark.style.fontSize = mastPx + 'px';
     /* 좌우로만 눌린다 — 세로는 그대로라 [markInk] 가 잰 위아래 몫도 그대로 맞는다.
        («가운데를 잡고» 눌러야 한다. 기본은 가운데이지만 못 박아 둔다 — 이 값이 바뀌면

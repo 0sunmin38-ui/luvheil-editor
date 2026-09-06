@@ -912,14 +912,13 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,
   --tail-long:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 41 24%22%3E%3Cpath d=%22M8.13916 14.3181C8.69683 17.2091 6.72558 21.2965 5.94448 22.7656C5.85274 22.9381 6.02748 23.1398 6.20474 23.0576C8.90372 21.8049 20.4394 16.3428 22.7737 13.4356C23.0432 13.1 23.4295 12.8181 23.8599 12.8181H39.313C39.5425 12.8181 39.5912 12.4947 39.372 12.427L0.764563 0.511141C0.575987 0.452938 0.423776 0.675021 0.545943 0.830016C1.64505 2.22445 4.68888 6.16322 6.13916 8.81812C7.23482 10.8238 7.62536 11.6546 8.13916 14.3181Z%22 fill=%22black%22 stroke=%22black%22/%3E%3C/svg%3E");
 }
 
-/* 그림형 꼬리 (뾰족·곡선·긴꼬리) — 그림 하나만 그린다.
-   전에는 오른쪽에 사각형('잇는 다리')을 덧대 둥근 모서리 밑을 메웠는데,
-   그 사각형이 모서리를 각지게 만들어 네모 상자가 붙은 것처럼 보였다.
-   대신 그림을 2px 만 말풍선 쪽으로 물려 이음새를 없앤다 — 겹치는 부분은 같은 색이라 안 보인다.
+/* 그림형 꼬리 (뾰족·곡선·긴꼬리) — 실제 DOM 요소로 그린다.
+   ::before 가상 요소는 SVG foreignObject 에서 z-index 처리가 꼬여 내보내기 시 문제가 생겼다.
+   실제 DOM 요소는 문서 흐름에 따라 정확한 레이어에 놓인다.
+   그림을 2px 만 말풍선 쪽으로 물려 이음새를 없앤다 — 겹치는 부분은 같은 색이라 안 보인다.
    --tail-w = 그림 폭(꼬리 크기의 배수) · --tail-ar = 그림 원래 세로/가로 비 */
-.blk-bubble .bub.has-tail.t-img::before{
-  content:"";position:absolute;z-index:-1;bottom:0;
-  visibility:var(--tail-hide,visible);
+.blk-bubble .bub.has-tail.t-img .bub-tail{
+  position:absolute;z-index:-1;bottom:0;
   left:calc(var(--tail-size,5px) * var(--tail-w,1.6) * -1 + 2px + var(--tail-x,0px));
   margin-bottom:var(--tail-y,0px);
   width:calc(var(--tail-size,5px) * var(--tail-w,1.6));
@@ -935,15 +934,14 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,
    '얼마나 삐져나오는가' 라는 뜻이 그대로 유지된다.
    전에는 아래(bottom:0) 하나뿐이라, 위로 올리려면 y 를 말풍선 높이만큼 키워야 했고
    그러면 한 줄짜리에서만 맞고 여러 줄짜리에서는 어긋났다. */
-.blk-bubble .bub.has-tail.t-img.t-top::before{
+.blk-bubble .bub.has-tail.t-img.t-top .bub-tail{
   bottom:auto; top:0; margin-bottom:0; margin-top:var(--tail-y,0px);
 }
-.blk-bubble .bub.has-tail.t-dot.t-top::before{
+.blk-bubble .bub.has-tail.t-dot.t-top .bub-tail{
   bottom:auto; top:1px; margin-bottom:0; margin-top:var(--tail-y,0px);
 }
-.blk-bubble .bub.has-tail.t-dot::before{
-  content:"";position:absolute;z-index:-1;
-  visibility:var(--tail-hide,visible);
+.blk-bubble .bub.has-tail.t-dot .bub-tail{
+  position:absolute;z-index:-1;
   bottom:1px;
   left:calc(var(--tail-size,5px) * -2 + var(--tail-x,0px));
   margin-bottom:var(--tail-y,0px);
@@ -955,11 +953,11 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,
 }
 /* 내 말풍선은 좌우 반전 */
 /* 내 말풍선은 거울이라 좌우가 한 번 더 뒤집힌다. 회전도 같이 뒤집어야 좌우가 대칭으로 보인다. */
-.blk-bubble.is-me .bub.has-tail.t-img::before{
+.blk-bubble.is-me .bub.has-tail.t-img .bub-tail{
   left:auto;right:calc(var(--tail-size,5px) * var(--tail-w,1.6) * -1 + 2px + var(--tail-x,0px));
   transform:rotate(calc(var(--tail-rot,0deg) * -1)) scale(calc(var(--tail-sx,1) * -1),var(--tail-sy,1));
 }
-.blk-bubble.is-me .bub.has-tail.t-dot::before{
+.blk-bubble.is-me .bub.has-tail.t-dot .bub-tail{
   left:auto;right:calc(var(--tail-size,5px) * -2 + var(--tail-x,0px));
 }
 
@@ -4090,6 +4088,13 @@ function renderBlock(b, th, f, prev, next) {
         + (tTop ? ' t-top' : '') : '')
       + (bs === 'quote' ? ' as-quote' : '') + (bs === 'plain' ? ' as-plain' : ''));
     bub.innerHTML = applyInline(b.text || '');
+    /* 꼬리를 실제 DOM 요소로 생성 — ::before 가상 요소는 SVG foreignObject 에서
+       z-index:-1 + isolation:isolate 조합이 제대로 작동하지 않아 레이어가 꼬인다.
+       실제 DOM 요소는 문서 흐름에 따라 정확한 레이어에 놓인다. */
+    if (hasTail) {
+      const tail = el('span', 'bub-tail');
+      bub.prepend(tail);
+    }
     const tBg = isMe ? (th.myBubbleBg || th.bubbleBg) : th.bubbleBg;
     const tFg = isMe ? (th.myBubbleFg || th.bubbleFg) : th.bubbleFg;
     bub.style.setProperty('--bub-bg', (ch && ch.useCustomBubble) ? ch.bubbleBg : tBg);
@@ -8811,11 +8816,8 @@ async function exportPNG() {
         const bubbles = [...cv.querySelectorAll('.bub')];
         const savedOverflow = bubbles.map(b => b.style.overflow);
         bubbles.forEach(b => b.style.setProperty('overflow', 'hidden', 'important'));
-        /* 말풍선 꼬리 숨김 — SVG foreignObject 에서 z-index:-1 + isolation:isolate 조합이
-           제대로 작동하지 않아, 꼬리가 캔버스 배경 뒤로 새어 프로필 아이콘 앞에 보인다.
-           내보내기 시 꼬리를 숨기고 말풍선만 보이게 한다. */
-        const tails = [...cv.querySelectorAll('.bub.has-tail')];
-        tails.forEach(b => b.style.setProperty('--tail-hide', 'hidden'));
+        /* 말풍선 꼬리는 실제 DOM 요소(.bub-tail)로 그린다 — ::before 가상 요소의
+           z-index 문제가 해결되어 별도 처리 없이 정상 렌더링된다. */
         try {
           await raf2();
           const w = Math.ceil(cv.offsetWidth), h = Math.ceil(cv.offsetHeight);
@@ -8828,7 +8830,6 @@ async function exportPNG() {
             if (savedOverflow[i]) b.style.overflow = savedOverflow[i];
             else b.style.removeProperty('overflow');
           });
-          tails.forEach(b => b.style.removeProperty('--tail-hide'));
         }
       }
       const snap = captureClone(cv);

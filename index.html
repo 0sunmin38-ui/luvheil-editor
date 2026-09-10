@@ -896,6 +896,22 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,
 .blk-bubble.q-row.is-me .who{text-align:right}
 /* «없음» 도 우측이면 이름이 글 오른쪽 끝에 맞는다 — 같은 까닭이다 */
 .blk-bubble.p-row.is-me .who{text-align:right}
+
+/* ── 각본 ──────────────────────────────────────────────────────
+   «이름 | 말» 이 한 줄에 놓이는 꼴. 이름은 본디 제 줄을 갖는 덩이라 [.who 는 div],
+   칸을 세로가 아니라 «가로» 로 세워 이름·금·말을 나란히 눕힌다.
+   [밑줄 맞춤] 이름과 말은 크기가 다르다 [.who 는 .8em] — 상자 위나 가운데가 아니라
+   글의 밑줄(baseline)에 맞춰야 한 줄로 읽힌다.
+   [접히면 어디로] 말이 길어 접히면 이름 아래가 아니라 «말» 아래로 이어진다.
+   이름줄이 눈금 노릇을 해, 누가 말했는지가 왼쪽 한 줄로 죽 읽힌다. */
+.blk-bubble.s-row .col{flex-direction:row;align-items:baseline;gap:.4em;flex:0 1 auto}
+/* 우측은 줄 자체가 거울이지만 [.is-me 의 row-reverse] 이름과 말의 차례까지 뒤집으면
+   «말 | 이름» 이 되어 각본이 아니게 된다 — 칸 안쪽 차례는 그대로 둔다. */
+.blk-bubble.s-row.is-me .col{flex-direction:row;align-items:baseline}
+.blk-bubble.s-row .who{padding:0;flex:0 0 auto;white-space:nowrap;text-align:left}
+.blk-bubble.s-row .bub{width:auto;flex:0 1 auto;min-width:0}
+/* 금은 이름보다 한 단 더 옅다 — 읽는 것이 아니라 가르는 것이라서 */
+.blk-bubble.s-row .who-sep{flex:0 0 auto;opacity:.4;font-size:.8em}
 .blk-bubble .bub{
   background:var(--bub-bg,#E9E9EC); color:var(--bub-fg,#1A1A1A);
   /* 안쪽 여백은 글자 크기를 따른다 — 8px 로 못 박아 두면 큰 글자에서는 답답하고
@@ -4051,7 +4067,8 @@ function renderBlock(b, th, f, prev, next) {
        «위치 · 좌/우» 를 눌러도 아무 일이 없어 고장으로 보였다 [.p-row 는 아래에서]. */
     const sided = isMe;
     const row = el('div', 'blk-bubble' + (sided ? ' is-me' : '') + (doc ? ' as-doc' : '')
-      + (bs === 'quote' ? ' q-row' : '') + (bs === 'plain' ? ' p-row' : ''));
+      + (bs === 'quote' ? ' q-row' : '') + (bs === 'plain' ? ' p-row' : '')
+      + (bs === 'script' ? ' s-row' : ''));
     /* 같은 사람이 연달아 말하면 한 덩어리로 묶는다 — 메신저가 연속 발화를 다루는 방식이다.
        · 위가 같은 사람이면(cont) 이름을 빼고 이미지는 자리만 남긴 채 감춘다
        · 아래가 같은 사람이면(more) 꼬리를 접는다 — 꼬리는 덩어리의 마지막 한 장에만 남는다
@@ -4090,6 +4107,11 @@ function renderBlock(b, th, f, prev, next) {
       row.classList.add('has-name');
       if (quoteAv) { row.classList.add('q-named'); row.insertBefore(nameEl, row.firstChild); }
       else col.appendChild(nameEl);
+      /* 각본은 이름과 말 사이에 금을 하나 긋는다. 가상 요소(::after)가 아니라 실제 요소다 —
+         저장은 캔버스를 SVG 안에서 다시 그리는 일이라, 가상 요소는 그 안에서 어긋날 수 있다
+         [말꼬리를 실제 요소로 옮긴 것과 같은 까닭]. 이름이 없는 줄에는 금도 없다 —
+         이어 말하기로 이름이 접힌 줄은 [cont] 그대로 말만 이어진다. */
+      if (bs === 'script' && !quoteAv) col.appendChild(el('span', 'who-sep', '|'));
     }
 
     /* 얼굴을 말풍선의 어느 높이에 세울지.
@@ -4105,7 +4127,8 @@ function renderBlock(b, th, f, prev, next) {
     const bub = el('div', 'bub'
       + (hasTail ? ' has-tail ' + ((th.tailShape || 'curve') === 'dot' ? 't-dot' : 't-img')
         + (tTop ? ' t-top' : '') : '')
-      + (bs === 'quote' ? ' as-quote' : '') + (bs === 'plain' ? ' as-plain' : ''));
+      + (bs === 'quote' ? ' as-quote' : '')
+      + (bs === 'plain' || bs === 'script' ? ' as-plain' : ''));
     bub.innerHTML = applyInline(b.text || '');
     /* 꼬리를 실제 DOM 요소로 생성 — ::before 가상 요소는 SVG foreignObject 에서
        z-index:-1 + isolation:isolate 조합이 제대로 작동하지 않아 레이어가 꼬인다.
@@ -4137,9 +4160,9 @@ function renderBlock(b, th, f, prev, next) {
        선과 글이 떨어져 인용으로 안 읽힌다 — 늘 선이 선 쪽에 붙인다.
        좌측은 왼쪽, 우측[sided]은 거울상이라 오른쪽이다. */
     if (bs === 'quote') bub.style.textAlign = sided ? 'right' : 'left';
-    /* 없음은 배경도 선도 없어서 이름·얼굴·글이 한 덩어리로 읽힌다.
+    /* 없음·각본은 배경도 선도 없어서 이름·얼굴·글이 한 덩어리로 읽힌다.
        그 덩어리를 통째로 정렬한다 — 글만 칸 안에서 움직이면 얼굴만 왼쪽에 남는다. */
-    if (bs === 'plain') {
+    if (bs === 'plain' || bs === 'script') {
       /* 우측을 고르면 [sided] 그쪽 끝에 붙인다 — 말풍선·인용과 같은 규칙이다.
          («우측» 은 줄 자체가 거울이라 [.is-me 의 row-reverse] flex-start 가 오른쪽 끝이다.)
          좌측은 여태처럼 글 정렬이 덩어리를 통째로 옮긴다. */
@@ -7569,8 +7592,9 @@ function themeEditor() {
   box.appendChild(el('div', 'divider'));
   box.appendChild(el('div', 'sec-title', '대사 설정'));
   const st2 = el('div', 'stack');
-  /* 발화자 블록의 겉모습 — 셋 중 하나. 인용·없음은 배경이 없어 꼬리·둥글기가 의미 없다. */
-  st2.appendChild(segment([['bubble', '말풍선'], ['quote', '인용구'], ['plain', '없음']],
+  /* 발화자 블록의 겉모습 — 넷 중 하나. 말풍선만 배경이 있어, 나머지 셋은 꼬리·둥글기가
+     의미 없다. «각본» 은 이름과 말이 한 줄에 오는 꼴이다 [.s-row]. */
+  st2.appendChild(segment([['bubble', '말풍선'], ['quote', '인용구'], ['script', '각본'], ['plain', '없음']],
     t.bubbleStyle || 'bubble', v => { t.bubbleStyle = v; render(); }));
   const isBubble = (t.bubbleStyle || 'bubble') === 'bubble';
   if (isBubble) st2.appendChild(toggleRow('말꼬리 추가', '', t.showTail, v => { t.showTail = v; render(); }));

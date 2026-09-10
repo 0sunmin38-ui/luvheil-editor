@@ -8082,12 +8082,18 @@ function loadHTI() {
     try {
       await new Promise((res, rej) => {
         const s = document.createElement('script');
-        s.src = url; s.onload = res; s.onerror = rej;
+        s.src = url; s.onload = res;
+        /* 이벤트를 그대로 던지면 위에서 «까닭» 을 꺼낼 수 없다 — 말이 되는 오류로 바꿔 던진다 */
+        s.onerror = () => rej(new Error('html-to-image 를 받지 못했습니다'));
         document.head.appendChild(s);
       });
     } finally { if (blob) URL.revokeObjectURL(blob); }
     return window.htmlToImage;
   })();
+  /* 한 번 넘어진 약속을 그대로 쥐고 있으면, 그 뒤로는 «이미지 저장» 을 몇 번을 눌러도
+     같은 자리에서 곧바로 넘어진다 — 망이 잠깐 끊겼을 뿐인데 새로고침 전까지 저장이
+     영영 막힌다. 넘어지면 놓아 주어, 다음에 누를 때 다시 받아 보게 한다. */
+  _hti.catch(() => { _hti = null; });
   return _hti;
 }
 
@@ -8879,7 +8885,11 @@ async function exportPNG() {
     rows.forEach(n => n.classList.remove('row-off'));
     await deliver(urls.map((u, i) => ({ url: u, name: `발췌_${stamp}-${i + 1}.png` })));
   } catch (e) {
-    console.error(e); toast('저장에 실패했습니다');
+    console.error(e);
+    /* «실패했습니다» 한 줄로는 누른 사람도, 전해 듣는 쪽도 손쓸 데가 없다. 넘어지는 자리는
+       거의 늘 바깥에서 받아 오는 것(html-to-image · 글꼴)이 막힌 데라, 까닭을 붙여 둔다. */
+    const why = (e && (e.message || e.name)) || '';
+    toast('저장에 실패했습니다' + (why ? ' · ' + why : ''));
   } finally {
     if (exportFontStyle) exportFontStyle.remove();
     pageRows().forEach(n => n.classList.remove('row-off'));
